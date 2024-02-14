@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "998436820487",
+    "project_id": "zenmobile-72830",
+    "storage_bucket": "zenmobile-72830.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998436820487:android:5e844206884fac2f847ca2",
+        "android_client_info": {
+          "package_name": "com.example.zenmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVvGBHlppFUiDeLifr8-XrcDnbcI8PmIE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
