@@ -29,10 +29,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             // Get new FCM registration token
             val token = task.result
             Log.d("Firebase", "Token received $token")
-//            // Log and toast
-//            val msg = "Received token"
-//            Log.d(TAG, msg)
-//            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+//
         })
 
 

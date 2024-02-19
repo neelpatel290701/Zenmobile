@@ -233,18 +233,14 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-//    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-//    val permissions = arrayOf<String>("android.permission.POST_NOTIFICATIONS")
 
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("SetJavaScriptEnabled", "MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Hide the action bar
-        supportActionBar?.hide()
 
-//        this.window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN)    // this lone for remove the status bar
+//        this.window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN)    // this line for remove the status bar
 
         window.statusBarColor = resources.getColor(android.R.color.black, theme)   // change the status bar color
 
@@ -274,6 +270,26 @@ class MainActivity : AppCompatActivity() {
          askNotificationPermission()
          // Check and request location permission if needed
          checkLocationPermission()
+
+
+
+        // Specify the JavaScript code to retrieve data from local storage
+        val jsCode = """
+        // Get the data from local storage
+        var data = window.localStorage.getItem('user-id');
+        console.log("Java Script Neel");
+        """.trimIndent()
+
+        // Execute the JavaScript code and handle the result
+        webView.evaluateJavascript(jsCode) { result ->
+            // result contains the data retrieved from local storage
+            // Handle the result as needed
+            if (result != null && result.isNotEmpty()) {
+                Log.d("WebViewData", "Data from local storage: $result")
+            } else {
+                Log.d("WebViewData", "No data found in local storage")
+            }
+        }
 
 
 
@@ -386,13 +402,18 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
+//                webView.loadUrl("javascript:(function() { " +
+//                        "console.log('NEEL PATEL'); " + // Add your console.log() statement here
+//                        "var loaderElements = document.getElementsByClassName('global-loader-container');" +
+//                        "console.log(loaderElements[0].style); " +
+//                        "for (var i = 0; i < loaderElements.length; i++) {" +
+//                        "    loaderElements[i].style.display = 'none';" +
+//                        "}})()")
+
                 webView.loadUrl("javascript:(function() { " +
-                        "console.log('NEEL PATEL'); " + // Add your console.log() statement here
-                        "var loaderElements = document.getElementsByClassName('global-loader-container');" +
-                        "console.log(loaderElements[0].style); " +
-                        "for (var i = 0; i < loaderElements.length; i++) {" +
-                        "    loaderElements[i].style.display = 'none';" +
-                        "}})()")
+                        "console.log('NEEL PATEL Here'); " +
+                        "var data = window.localStorage.getItem('user-id');" +
+                        "console.log('user-id is : '+data); })()")
 
                 if(!redirect) completely_loaded = true
 
@@ -618,7 +639,6 @@ class MainActivity : AppCompatActivity() {
         // Check if the URL starts with "https://maps.google.com/maps" and contains "daddr=" indicating destination coordinates
         return url.startsWith("https://maps.google.com/maps") && url.contains("daddr=")
     }
-
 
 }
 
