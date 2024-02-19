@@ -33,7 +33,9 @@ import java.util.regex.Pattern
 import android.provider.Settings
 import android.view.View
 import android.view.Window
+import android.view.WindowInsetsAnimation.Callback
 import android.view.WindowManager
+import android.webkit.ConsoleMessage
 import android.webkit.WebSettings
 import android.widget.FrameLayout
 import android.widget.ProgressBar
@@ -43,11 +45,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.messaging.FirebaseMessagingService
+import retrofit2.Call
+import retrofit2.HttpException
+import retrofit2.Response
 
 
-@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
+
+    lateinit var userid : String
+    lateinit var companyid : String
+    lateinit var accesstoken : String
 
     // Declare the launcher at the top of your Activity/Fragment:
     @RequiresApi(Build.VERSION_CODES.O)
@@ -57,6 +68,8 @@ class MainActivity : AppCompatActivity() {
         if (isGranted) {
             // FCM SDK (and your app) can post notifications.
             d(TAG, "Notification :  Granted")
+            getTokenFromFCM()
+
         } else {
             // TODO: Inform user that that your app will not show notifications.
             d(TAG, "Notification : Not Granted")
@@ -65,6 +78,26 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+
+    private fun getTokenFromFCM(){
+
+        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w("Firebase Notification", "Fetching FCM registration token failed", task.exception)
+                return@OnCompleteListener
+            }
+
+            // Get new FCM registration token
+            val token = task.result
+            accesstoken = token
+            d("Firebase Notification", "Token received :  $token")
+
+            val firebaseMessagingService = MyFirebaseMessagingService()
+            firebaseMessagingService.onNewToken(token)
+//
+        })
+    }
+
     private fun askNotificationPermission() {
         // This is only necessary for API level >= 33 (TIRAMISU)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -72,6 +105,7 @@ class MainActivity : AppCompatActivity() {
                 PackageManager.PERMISSION_GRANTED
             ) {
                 // FCM SDK (and your app) can post notifications.
+                getTokenFromFCM()
 
             } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
                 // TODO: display an educational UI explaining to the user the features that will be enabled
@@ -234,6 +268,83 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    // access local storage values : user-id , company-id , access-token
+    private fun accessLocalStorage(webView: WebView) {
+
+        val firebaseMessagingService = MyFirebaseMessagingService()
+
+        // Access localStorage using JavaScript
+        webView.evaluateJavascript(
+            "(function() { return  JSON.stringify(localStorage); })();"
+        ) { value ->
+            // Handle the value retrieved from localStorage here
+            Log.d("LocalStorage values", "Value from localStorage: $value")
+        }
+
+        webView.evaluateJavascript(
+            "(function() { return localStorage.getItem('user-id');  })();"
+        ) { value ->
+            userid = value
+            Log.d("LocalStorage values", "user-id : $userid")
+//            firebaseMessagingService.processLocalStorageValues(userid)
+            firebaseMessagingService.userid = userid
+            val temp = firebaseMessagingService.userid
+            Log.d("LocalStorage values---", "company-id : $temp")
+        }
+
+        webView.evaluateJavascript(
+            "(function() { return localStorage.getItem('access-token');  })();"
+        ) { value ->
+            accesstoken = value
+            Log.d("LocalStorage values", "access-token : $accesstoken")
+            firebaseMessagingService.accesstoken = accesstoken
+        }
+
+        webView.evaluateJavascript(
+            "(function() { return localStorage.getItem('company-id'); })();"
+        ) { value ->
+            companyid = value
+            Log.d("LocalStorage values", "company-id : $companyid")
+            firebaseMessagingService.companyid = companyid
+        }
+
+
+    }
+
+
+    private fun apiRequestToServer(){
+
+        val userData = dataModelItem("abc" , "FCM")
+        RetrofitInstance.apiInterface.sendToken(userid , companyid , accesstoken , userData ).enqueue(object :
+            retrofit2.Callback<dataModelItem?>{
+            override fun onResponse(
+                call: Call<dataModelItem?>,
+                response: Response<dataModelItem?>
+            ) {
+                try {
+                    val resCode = response.code().toString()
+                    Log.d("MainActivity POST", "success $resCode")
+
+                } catch (e: Exception) {
+                    Log.e("MainActivity POST", "Error: ${e.message}", e)
+                }
+
+            }
+
+            override fun onFailure(call: Call<dataModelItem?>, t: Throwable) {
+
+                Log.d("MainActivity POST", "onFailure")
+                if (t is HttpException) {
+                    Log.d("MainActivity POST", "HTTP Status Code: $t")
+                }
+            }
+
+
+        })
+
+    }
+
+
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("SetJavaScriptEnabled", "MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -270,26 +381,6 @@ class MainActivity : AppCompatActivity() {
          askNotificationPermission()
          // Check and request location permission if needed
          checkLocationPermission()
-
-
-
-        // Specify the JavaScript code to retrieve data from local storage
-        val jsCode = """
-        // Get the data from local storage
-        var data = window.localStorage.getItem('user-id');
-        console.log("Java Script Neel");
-        """.trimIndent()
-
-        // Execute the JavaScript code and handle the result
-        webView.evaluateJavascript(jsCode) { result ->
-            // result contains the data retrieved from local storage
-            // Handle the result as needed
-            if (result != null && result.isNotEmpty()) {
-                Log.d("WebViewData", "Data from local storage: $result")
-            } else {
-                Log.d("WebViewData", "No data found in local storage")
-            }
-        }
 
 
 
@@ -402,18 +493,17 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
-//                webView.loadUrl("javascript:(function() { " +
-//                        "console.log('NEEL PATEL'); " + // Add your console.log() statement here
-//                        "var loaderElements = document.getElementsByClassName('global-loader-container');" +
-//                        "console.log(loaderElements[0].style); " +
-//                        "for (var i = 0; i < loaderElements.length; i++) {" +
-//                        "    loaderElements[i].style.display = 'none';" +
-//                        "}})()")
 
                 webView.loadUrl("javascript:(function() { " +
                         "console.log('NEEL PATEL Here'); " +
                         "var data = window.localStorage.getItem('user-id');" +
                         "console.log('user-id is : '+data); })()")
+
+
+
+                accessLocalStorage(webView)
+//                apiRequestToServer()
+
 
                 if(!redirect) completely_loaded = true
 
@@ -428,6 +518,7 @@ class MainActivity : AppCompatActivity() {
 
 
         }
+
 
 
 
@@ -448,6 +539,8 @@ class MainActivity : AppCompatActivity() {
                     progressBar.visibility = View.VISIBLE
                 }
             }
+
+
 
 //            override fun onProgressChanged(view: WebView?, newProgress: Int) {
 //                super.onProgressChanged(view, newProgress)
@@ -639,6 +732,7 @@ class MainActivity : AppCompatActivity() {
         // Check if the URL starts with "https://maps.google.com/maps" and contains "daddr=" indicating destination coordinates
         return url.startsWith("https://maps.google.com/maps") && url.contains("daddr=")
     }
+
 
 }
 

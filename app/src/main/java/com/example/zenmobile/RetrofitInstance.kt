@@ -6,7 +6,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitInstance {
 
-    private const val BASE_URL = "https://jsonplaceholder.typicode.com/"
+    private const val BASE_URL = "https://services-stage.smartserv.io/api/notification/"
 
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
