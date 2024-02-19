@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var userid : String
     lateinit var companyid : String
     lateinit var accesstoken : String
+    lateinit var registrationToken : String
 
     // Declare the launcher at the top of your Activity/Fragment:
     @RequiresApi(Build.VERSION_CODES.O)
@@ -89,7 +90,7 @@ class MainActivity : AppCompatActivity() {
 
             // Get new FCM registration token
             val token = task.result
-            accesstoken = token
+            registrationToken = token
             d("Firebase Notification", "Token received :  $token")
 
             val firebaseMessagingService = MyFirebaseMessagingService()
@@ -271,7 +272,7 @@ class MainActivity : AppCompatActivity() {
     // access local storage values : user-id , company-id , access-token
     private fun accessLocalStorage(webView: WebView) {
 
-        val firebaseMessagingService = MyFirebaseMessagingService()
+//        val firebaseMessagingService = MyFirebaseMessagingService()
 
         // Access localStorage using JavaScript
         webView.evaluateJavascript(
@@ -287,9 +288,9 @@ class MainActivity : AppCompatActivity() {
             userid = value
             Log.d("LocalStorage values", "user-id : $userid")
 //            firebaseMessagingService.processLocalStorageValues(userid)
-            firebaseMessagingService.userid = userid
-            val temp = firebaseMessagingService.userid
-            Log.d("LocalStorage values---", "company-id : $temp")
+//            firebaseMessagingService.userid = userid
+//            val temp = firebaseMessagingService.userid
+            Log.d("LocalStorage values---", "company-id : $userid")
         }
 
         webView.evaluateJavascript(
@@ -297,7 +298,7 @@ class MainActivity : AppCompatActivity() {
         ) { value ->
             accesstoken = value
             Log.d("LocalStorage values", "access-token : $accesstoken")
-            firebaseMessagingService.accesstoken = accesstoken
+//            firebaseMessagingService.accesstoken = accesstoken
         }
 
         webView.evaluateJavascript(
@@ -305,7 +306,7 @@ class MainActivity : AppCompatActivity() {
         ) { value ->
             companyid = value
             Log.d("LocalStorage values", "company-id : $companyid")
-            firebaseMessagingService.companyid = companyid
+//            firebaseMessagingService.companyid = companyid
         }
 
 
@@ -314,8 +315,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun apiRequestToServer(){
 
-        val userData = dataModelItem("abc" , "FCM")
-        RetrofitInstance.apiInterface.sendToken(userid , companyid , accesstoken , userData ).enqueue(object :
+        val userData = dataModelItem("cJ_QATfxQLe-dnWCyemiqa:APA91bHv-vvz0JV0AviFuRt15NxbAmijnYGbFdAF3I724rlOLkZNiN3PMejUCErlCJ5zUj-PnjIRmD_EziPOBO8bkdRg_wfJsdrCYjCWDZEpmeExUMGV07GEgN7wUES_bqaXf6_iP3LZ","FCM")
+        RetrofitInstance.apiInterface.sendToken("5296" , "358" , "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsInRva2VuVHlwZSI6ImFjY2Vzcy10b2tlbiJ9.eyJ1c2VySWQiOjUyOTYsImNvbXBhbnlJZCI6MzU4LCJyb2xlSWQiOjE2NTEsInJvbGVOYW1lIjoiVGVjaG5pY2lhbiIsInByb2ZpbGVOYW1lIjoiVGVjaG5pY2lhbiIsInV1aWQiOiJlMWUzODk1My03YWZjLTQ2NWQtOTQxMS0wNDc2ODYyZDg2ZjUiLCJpYXQiOjE3MDgzMjYxNDEsImV4cCI6MTcwODQxMjU0MX0.IVQT4EFaVRpkBUEWBATUsEh6BYIcLv8-4FkKzCHXHD9bt2JNDNmCZGtVb-3axJlVeEK7rIqh5s8Cz7PlwjyK8XpV2ydzR7Rtzdozd8zI8Vu1hd6PPIxfTlhchNYwKdPVYG5J-AJ2gygblZC7cOAh3Q97tqL39C9aP9MLzXndKm4" , userData ).enqueue(object :
             retrofit2.Callback<dataModelItem?>{
             override fun onResponse(
                 call: Call<dataModelItem?>,
@@ -323,7 +324,7 @@ class MainActivity : AppCompatActivity() {
             ) {
                 try {
                     val resCode = response.code().toString()
-                    Log.d("MainActivity POST", "success $resCode")
+                    Log.d("MainActivity POST", "success $response")
 
                 } catch (e: Exception) {
                     Log.e("MainActivity POST", "Error: ${e.message}", e)
@@ -502,7 +503,7 @@ class MainActivity : AppCompatActivity() {
 
 
                 accessLocalStorage(webView)
-//                apiRequestToServer()
+                apiRequestToServer()
 
 
                 if(!redirect) completely_loaded = true
