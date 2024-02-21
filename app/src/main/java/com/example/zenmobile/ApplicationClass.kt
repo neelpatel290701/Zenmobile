@@ -12,7 +12,7 @@ class ApplicationClass : Application() {
         super.onCreate()
 
 
-//        FirebaseApp.initializeApp(this)
+        FirebaseApp.initializeApp(this)
     }
 }
 

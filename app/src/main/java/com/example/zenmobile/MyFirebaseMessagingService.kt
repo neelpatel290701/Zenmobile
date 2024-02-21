@@ -16,39 +16,27 @@ import com.google.firebase.messaging.RemoteMessage
 @SuppressLint("MissingFirebaseInstanceTokenRefresh")
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
-    lateinit var userid  : String
-    lateinit var companyid : String
-    lateinit var accesstoken : String
-
-    fun processLocalStorageValues() {
-        Log.d("Firebase","user-id : $userid")
-    }
-
     override fun onCreate() {
         super.onCreate()
 
         Log.d("Firebase", "MyFirebaseMessagingService")
 
-//        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
-//            if (!task.isSuccessful) {
-//                Log.w(TAG, "Fetching FCM registration token failed", task.exception)
-//                return@OnCompleteListener
-//            }
-//
-//            // Get new FCM registration token
-//            val token = task.result
-//            Log.d("Firebase", "Token received :  $token")
-//
-//            onNewToken(token)
-////
-//        })
-
     }
 
+    // onMessageReceived when the application state is  Foreground and getting the notification
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         // Handle FCM messages here.
-        Log.d("Firebase onMessageReceived", "MyFirebaseMessagingService")
+
+        Log.d("Firebase onMessageReceived", "MyFirebaseMessagingService....")
+        var data = remoteMessage.notification?.body
+        Log.d("Firebase onMessageReceived", "Message is : $data")
+
+        if (remoteMessage.data.isNotEmpty()) {
+            Log.d(TAG, "Message data payload: ${remoteMessage.data}")
+
+        }
+
     }
 
 

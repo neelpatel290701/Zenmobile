@@ -354,10 +354,9 @@ class MainActivity : AppCompatActivity() {
     private fun apiRequestToServer(){
 
 
-
         Log.d("apiRequestToServer",userid)
-        Log.d("apiRequestToServer2",userid)
-        val userData = dataModelItem("cJ_QATfxQLe-dnWCyemiqa:APA91bHv-vvz0JV0AviFuRt15NxbAmijnYGbFdAF3I724rlOLkZNiN3PMejUCErlCJ5zUj-PnjIRmD_EziPOBO8bkdRg_wfJsdrCYjCWDZEpmeExUMGV07GEgN7wUES_bqaXf6_iP3LZ","FCM")
+
+        val userData = dataModelItem(registrationToken,"FCM")
         RetrofitInstance.apiInterface.sendToken(userid , companyid, accesstoken, userData ).enqueue(object :
             retrofit2.Callback<dataModelItem?>{
             override fun onResponse(
@@ -551,8 +550,8 @@ class MainActivity : AppCompatActivity() {
 
 
 
-                accessLocalStorage(webView)
-//                apiRequestToServer()
+//                accessLocalStorage(webView)
+
 
 
                 if(!redirect) completely_loaded = true
