@@ -29,6 +29,7 @@ import androidx.core.app.ActivityCompat
 import android.Manifest
 import android.location.LocationManager
 import android.os.Build
+import android.os.Handler
 import java.util.regex.Pattern
 import android.provider.Settings
 import android.view.View
@@ -116,16 +117,16 @@ class MainActivity : AppCompatActivity() {
                 d(TAG, "askNotification Permission :  shouldShowRequestPermission rational")
 
                 val builder = AlertDialog.Builder(this)
-            builder.setTitle("Enable Notifications")
-                .setMessage("Please enable notifications for this app to receive important updates.")
-                .setPositiveButton("Enable") { _, _ ->
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                builder.setTitle("Enable Notifications")
+                    .setMessage("Please enable notifications for this app to receive important updates.")
+                    .setPositiveButton("Enable") { _, _ ->
+                        requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
 
-                }
-                .setNegativeButton("Cancel") { dialog, _ ->
-                    dialog.dismiss()
-                }
-                .show()
+                    }
+                    .setNegativeButton("Cancel") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .show()
 
             } else {
                 // Directly ask for the permission
@@ -269,62 +270,110 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+//    // access local storage values : user-id , company-id , access-token
+//    private fun accessLocalStorage(webView: WebView) {
+//
+////        val firebaseMessagingService = MyFirebaseMessagingService()
+//
+//        // Access localStorage using JavaScript
+//        webView.evaluateJavascript(
+//            "(function() { return  JSON.stringify(localStorage); })();"
+//        ) { value ->
+//            // Handle the value retrieved from localStorage here
+//            Log.d("LocalStorage values", "Value from localStorage: $value")
+//        }
+//
+//        webView.evaluateJavascript(
+//            "(function() { return localStorage.getItem('user-id');  })();"
+//        ) { value ->
+//            userid = value
+//            Log.d("LocalStorage values", "user-id : $userid")
+////            firebaseMessagingService.processLocalStorageValues(userid)
+////            firebaseMessagingService.userid = userid
+////            val temp = firebaseMessagingService.userid
+//            Log.d("LocalStorage values---", "company-id : $userid")
+//        }
+//
+//        webView.evaluateJavascript(
+//            "(function() { return localStorage.getItem('access-token');  })();"
+//        ) { value ->
+//            accesstoken = value
+//            Log.d("LocalStorage values", "access-token : $accesstoken")
+////            firebaseMessagingService.accesstoken = accesstoken
+//        }
+//
+//        webView.evaluateJavascript(
+//            "(function() { return localStorage.getItem('company-id'); })();"
+//        ) { value ->
+//            companyid = value
+//            Log.d("LocalStorage values", "company-id : $companyid")
+////            firebaseMessagingService.companyid = companyid
+//        }
+//
+//
+//    }
+
     // access local storage values : user-id , company-id , access-token
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun accessLocalStorage(webView: WebView) {
-
-//        val firebaseMessagingService = MyFirebaseMessagingService()
-
-        // Access localStorage using JavaScript
+        var uid: String
+        var cid: String
+        var at: String
         webView.evaluateJavascript(
-            "(function() { return  JSON.stringify(localStorage); })();"
-        ) { value ->
-            // Handle the value retrieved from localStorage here
-            Log.d("LocalStorage values", "Value from localStorage: $value")
-        }
-
-        webView.evaluateJavascript(
-            "(function() { return localStorage.getItem('user-id');  })();"
-        ) { value ->
-            userid = value
+            "(function() { return localStorage.getItem('user-id'); })();"
+        ) { userIdValue ->
+            userid = userIdValue.substring(1, userIdValue.length - 1)
             Log.d("LocalStorage values", "user-id : $userid")
-//            firebaseMessagingService.processLocalStorageValues(userid)
-//            firebaseMessagingService.userid = userid
-//            val temp = firebaseMessagingService.userid
-            Log.d("LocalStorage values---", "company-id : $userid")
+
+            webView.evaluateJavascript(
+                "(function() { return localStorage.getItem('company-id'); })();"
+            ) { companyIdValue ->
+                companyid = companyIdValue.substring(1,companyIdValue.length-1)
+                Log.d("LocalStorage values", "company-id : $companyid")
+
+                webView.evaluateJavascript(
+                    "(function() { return localStorage.getItem('access-token'); })();"
+                ) { accessTokenValue ->
+                    accesstoken = accessTokenValue.substring(1,accessTokenValue.length-1)
+                    Log.d("LocalStorage values", "access-token : $accesstoken")
+
+//                    // After all variables are initialized, call apiRequestToServer()
+//                    Handler().postDelayed({
+//                        apiRequestToServer()
+//                    }, 20000)
+                    apiRequestToServer()
+
+                }
+            }
         }
-
-        webView.evaluateJavascript(
-            "(function() { return localStorage.getItem('access-token');  })();"
-        ) { value ->
-            accesstoken = value
-            Log.d("LocalStorage values", "access-token : $accesstoken")
-//            firebaseMessagingService.accesstoken = accesstoken
-        }
-
-        webView.evaluateJavascript(
-            "(function() { return localStorage.getItem('company-id'); })();"
-        ) { value ->
-            companyid = value
-            Log.d("LocalStorage values", "company-id : $companyid")
-//            firebaseMessagingService.companyid = companyid
-        }
-
-
     }
 
 
+
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun apiRequestToServer(){
 
+
+
+        Log.d("apiRequestToServer",userid)
+        Log.d("apiRequestToServer2",userid)
         val userData = dataModelItem("cJ_QATfxQLe-dnWCyemiqa:APA91bHv-vvz0JV0AviFuRt15NxbAmijnYGbFdAF3I724rlOLkZNiN3PMejUCErlCJ5zUj-PnjIRmD_EziPOBO8bkdRg_wfJsdrCYjCWDZEpmeExUMGV07GEgN7wUES_bqaXf6_iP3LZ","FCM")
-        RetrofitInstance.apiInterface.sendToken("5296" , "358" , "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsInRva2VuVHlwZSI6ImFjY2Vzcy10b2tlbiJ9.eyJ1c2VySWQiOjUyOTYsImNvbXBhbnlJZCI6MzU4LCJyb2xlSWQiOjE2NTEsInJvbGVOYW1lIjoiVGVjaG5pY2lhbiIsInByb2ZpbGVOYW1lIjoiVGVjaG5pY2lhbiIsInV1aWQiOiJlMWUzODk1My03YWZjLTQ2NWQtOTQxMS0wNDc2ODYyZDg2ZjUiLCJpYXQiOjE3MDgzMjYxNDEsImV4cCI6MTcwODQxMjU0MX0.IVQT4EFaVRpkBUEWBATUsEh6BYIcLv8-4FkKzCHXHD9bt2JNDNmCZGtVb-3axJlVeEK7rIqh5s8Cz7PlwjyK8XpV2ydzR7Rtzdozd8zI8Vu1hd6PPIxfTlhchNYwKdPVYG5J-AJ2gygblZC7cOAh3Q97tqL39C9aP9MLzXndKm4" , userData ).enqueue(object :
+        RetrofitInstance.apiInterface.sendToken(userid , companyid, accesstoken, userData ).enqueue(object :
             retrofit2.Callback<dataModelItem?>{
             override fun onResponse(
                 call: Call<dataModelItem?>,
                 response: Response<dataModelItem?>
             ) {
                 try {
-                    val resCode = response.code().toString()
-                    Log.d("MainActivity POST", "success $response")
+                    if (response.isSuccessful) {
+                        val responseData = response.body()
+                        // Process responseData according to your application's logic
+                        Log.d("MainActivity POST", "Success! Response Data: $responseData")
+                        Log.d("MainActivity POST", "Success! Response Code: ${response}")
+                    } else {
+                        // Handle unsuccessful response (e.g., non-200 status code)
+                        Log.e("MainActivity POST", "Unsuccessful response: ${response.code()}")
+                    }
 
                 } catch (e: Exception) {
                     Log.e("MainActivity POST", "Error: ${e.message}", e)
@@ -379,9 +428,9 @@ class MainActivity : AppCompatActivity() {
 
 
 
-         askNotificationPermission()
-         // Check and request location permission if needed
-         checkLocationPermission()
+        askNotificationPermission()
+        // Check and request location permission if needed
+        checkLocationPermission()
 
 
 
@@ -503,7 +552,7 @@ class MainActivity : AppCompatActivity() {
 
 
                 accessLocalStorage(webView)
-                apiRequestToServer()
+//                apiRequestToServer()
 
 
                 if(!redirect) completely_loaded = true
