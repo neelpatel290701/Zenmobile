@@ -70,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         if (isGranted) {
             // FCM SDK (and your app) can post notifications.
             d(TAG, "Notification :  Granted")
+            Log.d("Neel", "notification-granted")
             getTokenFromFCM()
 
         } else {
@@ -81,6 +82,7 @@ class MainActivity : AppCompatActivity() {
 
 
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun getTokenFromFCM(){
 
         FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
@@ -93,9 +95,11 @@ class MainActivity : AppCompatActivity() {
             val token = task.result
             registrationToken = token
             d("Firebase Notification", "Token received :  $token")
+            Log.d("Neel", "get token")
 
             val firebaseMessagingService = MyFirebaseMessagingService()
             firebaseMessagingService.onNewToken(token)
+            apiRequestToServer()
 //
         })
     }
@@ -107,7 +111,7 @@ class MainActivity : AppCompatActivity() {
                 PackageManager.PERMISSION_GRANTED
             ) {
                 // FCM SDK (and your app) can post notifications.
-                getTokenFromFCM()
+//                getTokenFromFCM()
 
             } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
                 // TODO: display an educational UI explaining to the user the features that will be enabled
@@ -115,6 +119,7 @@ class MainActivity : AppCompatActivity() {
                 //       "OK" and "No thanks" buttons. If the user selects "OK," directly request the permission.
                 //       If the user selects "No thanks," allow the user to continue without notifications.
                 d(TAG, "askNotification Permission :  shouldShowRequestPermission rational")
+                Log.d("Neel", "asknotification")
 
                 val builder = AlertDialog.Builder(this)
                 builder.setTitle("Enable Notifications")
@@ -316,9 +321,7 @@ class MainActivity : AppCompatActivity() {
     // access local storage values : user-id , company-id , access-token
     @RequiresApi(Build.VERSION_CODES.O)
     private fun accessLocalStorage(webView: WebView) {
-        var uid: String
-        var cid: String
-        var at: String
+
         webView.evaluateJavascript(
             "(function() { return localStorage.getItem('user-id'); })();"
         ) { userIdValue ->
@@ -341,7 +344,9 @@ class MainActivity : AppCompatActivity() {
 //                    Handler().postDelayed({
 //                        apiRequestToServer()
 //                    }, 20000)
-                    apiRequestToServer()
+//                    apiRequestToServer()
+                    Log.d("Neel", "accesslocalstorage")
+                    askNotificationPermission()
 
                 }
             }
@@ -355,6 +360,7 @@ class MainActivity : AppCompatActivity() {
 
 
         Log.d("apiRequestToServer",userid)
+        Log.d("Neel", "api-request")
 
         val userData = dataModelItem(registrationToken,"FCM")
         RetrofitInstance.apiInterface.sendToken(userid , companyid, accesstoken, userData ).enqueue(object :
@@ -399,6 +405,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Check if the activity was started by tapping on a notification
+        if (intent != null && intent.extras != null) {
+            val dataPayload = intent.extras?.getString("click_action")
+            if (dataPayload != null) {
+                // Handle the data payload here
+                Log.d("MainActivity", "Data payload: $dataPayload")
+
+            }
+        }
+
 
 //        this.window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN)    // this line for remove the status bar
 
@@ -427,7 +443,8 @@ class MainActivity : AppCompatActivity() {
 
 
 
-        askNotificationPermission()
+//        askNotificationPermission()
+
         // Check and request location permission if needed
         checkLocationPermission()
 
@@ -443,47 +460,46 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
 
                 val newUrl = request?.url.toString()
-                Log.d(TAG,"override URL is $newUrl")
+                Log.d("Override URL : ","override URL is $newUrl")
 
-//                if(isGoogleMapsUrl(newUrl)) {
-//                    Log.d(TAG,"override URL is a google map url")
-//                    // Handle Google Maps URL
-//                    val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(newUrl))
-//                    mapIntent.setPackage("com.google.android.apps.maps") // Specify the package to ensure it opens in Google Maps
-//                    startActivity(mapIntent)
-//                    return true // Return true to prevent WebView from loading the URL
-//                }
-
-                if (isGoogleMapsUrl(newUrl)) {
-                    Log.d(TAG, "Override URL is a Google Maps URL")
-
-                    // Create the intent to view the Google Maps URL
+                if(isGoogleMapsUrl(newUrl)) {
+                    Log.d("Override URL : ","google map url")
+                    // Handle Google Maps URL
                     val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(newUrl))
-
-                    // Resolve the activity to ensure it's handled by Google Maps
-                    val packageManager = packageManager
-                    val activities = packageManager.queryIntentActivities(mapIntent, PackageManager.MATCH_DEFAULT_ONLY)
-
-                    Log.d(TAG, "Override URL is a Google Maps URL :  activities $activities")
-
-                    // Check if there's an activity that can handle the intent
-                    if (activities.isNotEmpty()) {
-                        // Iterate through resolved activities and find the one for Google Maps
-                        for (activity in activities) {
-                            if (activity.activityInfo.packageName == "com.google.android.apps.maps") {
-                                // Found Google Maps activity, set its package name and start the activity
-                                mapIntent.setPackage(activity.activityInfo.packageName)
-                                startActivity(mapIntent)
-                                return true // Return true to prevent WebView from loading the URL
-                            }
-                        }
-                    }
-
-                    Log.d(TAG, "Override URL is a Google Maps URL :  activity empty")
-                    // If Google Maps is not found, fallback to opening the URL in any available browser
+                    mapIntent.setPackage("com.google.android.apps.maps") // Specify the package to ensure it opens in Google Maps
                     startActivity(mapIntent)
                     return true // Return true to prevent WebView from loading the URL
                 }
+//                    if (isGoogleMapsUrl(newUrl)) {
+//                    Log.d(TAG, "Override URL is a Google Maps URL")
+//
+//                    // Create the intent to view the Google Maps URL
+//                    val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(newUrl))
+//
+//                    // Resolve the activity to ensure it's handled by Google Maps
+//                    val packageManager = packageManager
+//                    val activities = packageManager.queryIntentActivities(mapIntent, PackageManager.MATCH_DEFAULT_ONLY)
+//
+//                    Log.d(TAG, "Override URL is a Google Maps URL :  activities $activities")
+//
+//                    // Check if there's an activity that can handle the intent
+//                    if (activities.isNotEmpty()) {
+//                        // Iterate through resolved activities and find the one for Google Maps
+//                        for (activity in activities) {
+//                            if (activity.activityInfo.packageName == "com.google.android.apps.maps") {
+//                                // Found Google Maps activity, set its package name and start the activity
+//                                mapIntent.setPackage(activity.activityInfo.packageName)
+//                                startActivity(mapIntent)
+//                                return true // Return true to prevent WebView from loading the URL
+//                            }
+//                        }
+//                    }
+//
+//                    Log.d(TAG, "Override URL is a Google Maps URL :  activity empty")
+//                    // If Google Maps is not found, fallback to opening the URL in any available browser
+//                    startActivity(mapIntent)
+//                    return true // Return true to prevent WebView from loading the URL
+//                }
 
 
 
@@ -534,8 +550,9 @@ class MainActivity : AppCompatActivity() {
 
                 completely_loaded = false
                 d(TAG, "completely_loaded : $completely_loaded")
-                Log.d(TAG, "Value of url(onPage-started) is $url")
+                Log.d("onPageStarted : ", "Value of url(onPage-started) is $url")
 
+                progressBar.visibility = View.VISIBLE
 
             }
 
@@ -549,8 +566,11 @@ class MainActivity : AppCompatActivity() {
                         "console.log('user-id is : '+data); })()")
 
 
+                Log.d("onPageFinished", "ok")
 
-//                accessLocalStorage(webView)
+
+                Log.d("Neel", "page-finished")
+                accessLocalStorage(webView)
 
 
 
@@ -561,6 +581,14 @@ class MainActivity : AppCompatActivity() {
                     d(TAG, "completely_loaded : $completely_loaded")
 
                 }else redirect = false
+
+            }
+
+            override fun onPageCommitVisible(view: WebView?, url: String?) {
+                super.onPageCommitVisible(view, url)
+                // Your code here
+                Log.d("onPageCommitVisible", "$url")
+                progressBar.visibility = View.GONE
 
             }
 
@@ -578,13 +606,14 @@ class MainActivity : AppCompatActivity() {
                 super.onProgressChanged(view, newProgress)
 
                 Log.d("onProgressChange", "ok")
+                Log.d("onProgressChange in", "$newProgress")
 
                 progressBar.progress = newProgress
                 if (newProgress >= 100) {
-                    Log.d("onProgressChange in 100 %", "ok")
+                    Log.d("webChromeClient:: onProgressChange in 100 %", "$newProgress")
                     progressBar.visibility = View.GONE
                 } else {
-                    Log.d("onProgressChange in", "ok")
+                    Log.d("webChromeClient:: onProgressChange in", "$newProgress")
                     progressBar.visibility = View.VISIBLE
                 }
             }
@@ -671,7 +700,7 @@ class MainActivity : AppCompatActivity() {
         webView.setDownloadListener(object : DownloadListener {
             override fun onDownloadStart(url: String?, userAgent: String?, contentDisposition: String?, mimeType: String?, contentLength: Long) {
                 // Your implementation here
-                Log.d(TAG,"Downloaded file URL is $url")
+                Log.d("Download File","Downloaded file URL is $url")
 //                val downloadIntent = Intent(Intent.ACTION_VIEW , Uri.parse(url))          //Using intent
 //                startActivity((downloadIntent))
 //                return
@@ -706,6 +735,8 @@ class MainActivity : AppCompatActivity() {
 
                 // Inform the user that the download has started
                 Toast.makeText(context, "Downloading $fileName", Toast.LENGTH_SHORT).show()
+
+
             }
         })
 

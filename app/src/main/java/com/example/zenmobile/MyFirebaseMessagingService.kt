@@ -16,20 +16,24 @@ import com.google.firebase.messaging.RemoteMessage
 @SuppressLint("MissingFirebaseInstanceTokenRefresh")
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
+    //it is called when firebase service is create
     override fun onCreate() {
         super.onCreate()
 
-        Log.d("Firebase", "MyFirebaseMessagingService")
+        Log.d("Firebase onCreate()", "MyFirebaseMessagingService")
+
 
     }
 
-    // onMessageReceived when the application state is  Foreground and getting the notification
+    // onMessageReceived when the application state is in Foreground and getting the notification
+    //or in background state that times called only when data is pass
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         // Handle FCM messages here.
 
         Log.d("Firebase onMessageReceived", "MyFirebaseMessagingService....")
         var data = remoteMessage.notification?.body
+//        var data = remoteMessage.data
         Log.d("Firebase onMessageReceived", "Message is : $data")
 
         if (remoteMessage.data.isNotEmpty()) {
@@ -38,6 +42,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
 
     }
+
+//    override fun handleIntent(intent: Intent?) {
+//        super.handleIntent(intent)
+//
+//        Log.d("Firebase handle-intent", "MyFirebaseMessagingService....")
+//    }
 
 
     override fun onNewToken(token: String) {
