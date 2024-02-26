@@ -1,15 +1,8 @@
-package com.example.zenmobile
+package pro.zentrades.android
 
 import android.annotation.SuppressLint
-import android.app.Service
 import android.content.ContentValues.TAG
-import android.content.Intent
-import android.os.IBinder
 import android.util.Log
-import android.widget.Toast
-import androidx.core.app.NotificationCompat
-import com.google.android.gms.tasks.OnCompleteListener
-import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 

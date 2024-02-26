@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.zenmobile"
+    namespace = "pro.zentrades.android"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.zenmobile"
+        applicationId = "pro.zentrades.android"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -55,5 +55,8 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    //GooglePlay Service API - Location Service
+    implementation("com.google.android.gms:play-services-location:21.1.0")
 
 }

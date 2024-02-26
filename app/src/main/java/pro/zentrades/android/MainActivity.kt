@@ -1,4 +1,4 @@
-package com.example.zenmobile
+package pro.zentrades.android
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -14,7 +14,6 @@ import android.util.Log
 import android.util.Log.d
 import android.view.KeyEvent
 import android.webkit.DownloadListener
-import android.webkit.GeolocationPermissions
 import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -29,27 +28,15 @@ import androidx.core.app.ActivityCompat
 import android.Manifest
 import android.location.LocationManager
 import android.os.Build
-import android.os.Handler
 import java.util.regex.Pattern
 import android.provider.Settings
 import android.view.View
-import android.view.Window
-import android.view.WindowInsetsAnimation.Callback
-import android.view.WindowManager
-import android.webkit.ConsoleMessage
-import android.webkit.WebSettings
-import android.widget.FrameLayout
 import android.widget.ProgressBar
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.OnCompleteListener
-import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
-import com.google.firebase.messaging.FirebaseMessagingService
 import retrofit2.Call
 import retrofit2.HttpException
 import retrofit2.Response
@@ -61,6 +48,8 @@ class MainActivity : AppCompatActivity() {
     lateinit var companyid : String
     lateinit var accesstoken : String
     lateinit var registrationToken : String
+
+    private var service : Intent ?= null
 
     // Declare the launcher at the top of your Activity/Fragment:
     @RequiresApi(Build.VERSION_CODES.O)
@@ -111,7 +100,12 @@ class MainActivity : AppCompatActivity() {
                 PackageManager.PERMISSION_GRANTED
             ) {
                 // FCM SDK (and your app) can post notifications.
-//                getTokenFromFCM()
+                Log.d("neel", "notification permission ok")
+
+                if( !(::accesstoken.isInitialized)) {    // if permission granted but token is not initialized
+                    getTokenFromFCM()
+                    Log.d("neel", "token not initialized - called getTokenFromFCM() ")
+                }
 
             } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
                 // TODO: display an educational UI explaining to the user the features that will be enabled
@@ -154,6 +148,8 @@ class MainActivity : AppCompatActivity() {
                 // Permission granted, reload the WebView
                 Log.d(TAG, "onRequestPermissionResult-Granted :  OK")
 
+                Log.d("Neel Location" , "$grantResults[0]")
+
             } else {
                 // Permission denied, show a message or handle it accordingly
             }
@@ -165,19 +161,20 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun checkLocationPermission() {
-        if (ContextCompat.checkSelfPermission(                      //if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && --- ){}
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-        }
-    }
+//    @RequiresApi(Build.VERSION_CODES.Q)
+//    private fun checkLocationPermission() {
+//        if (ContextCompat.checkSelfPermission(                      //if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && --- ){}
+//                this,
+//                Manifest.permission.ACCESS_FINE_LOCATION
+//            ) != PackageManager.PERMISSION_GRANTED
+//        ) {
+//            ActivityCompat.requestPermissions(
+//                this,
+//                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION , Manifest.permission.ACCESS_COARSE_LOCATION ),
+//                LOCATION_PERMISSION_REQUEST_CODE
+//            )
+//        }
+//    }
 
 
 
@@ -185,7 +182,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView : WebView
     private var uploadCallback: ValueCallback<Array<Uri>>? = null
-    lateinit var progressBar : ProgressBar
+//    lateinit var progressBar : ProgressBar
 
 
     var redirect = false
@@ -217,38 +214,96 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    //background permission result
+    val backgroundLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()){
+            if(it){
+                Log.d("neel" , "backgroundlocation")
+//                startService(service)
+            }
+    }
+
+    //location permission result
+    val locationPermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        when {
+            permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
+                // Precise location access granted.
+                Log.d("neel locationpermission" , "Fine")
+                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+
+                            if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                                != PackageManager.PERMISSION_GRANTED)  {
+                                backgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+
+                            }
+                    }
+
+            }
+
+            permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
+                // Only approximate location access granted.
+            } else -> {
+            // No location access granted.
+        }
+        }
+    }
 
 
+    private fun checkLocationPermission(){
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+                   locationPermissionRequest.launch(arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION))
+
+            } else {
+                // Directly ask for the permission
+                Log.d("neel CheckLocationPermission" , "Ok")
+                service?.let { ContextCompat.startForegroundService(this, it) }
+
+            }
+        }
+    }
+
+
+
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume :  OK")
-//        askNotificationPermission()
-//        checkLocationSettings()
+
+//        // Check and request location permission if needed
+//            checkLocationPermission()
     }
 
-    private fun checkLocationSettings() {
-        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        Log.d(TAG, "checkLocationSetting :  OK")
-        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Log.d(TAG, "checkLocationSetting - !location-manager:  OK")
+//    private fun checkLocationSettings() {
+//        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+//        Log.d(TAG, "checkLocationSetting :  OK")
+//        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+//            Log.d(TAG, "checkLocationSetting - !location-manager:  OK")
+//
+//            showLocationSettingsDialog()
+//        }
+//    }
 
-            showLocationSettingsDialog()
-        }
-    }
-
-    private fun showLocationSettingsDialog() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Location Settings")
-        builder.setMessage("Location services are disabled. Do you want to enable them?")
-        builder.setPositiveButton("Yes") { _, _ ->
-            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-            startActivity(intent)
-        }
-        builder.setNegativeButton("No") { _, _ ->
-            // Handle the case where the user chooses not to enable location services
-        }
-        builder.show()
-    }
+//    private fun showLocationSettingsDialog() {
+//        val builder = AlertDialog.Builder(this)
+//        builder.setTitle("Location Settings")
+//        builder.setMessage("Location services are disabled. Do you want to enable them?")
+//        builder.setPositiveButton("Yes") { _, _ ->
+//            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+//            startActivity(intent)
+//        }
+//        builder.setNegativeButton("No") { _, _ ->
+//            // Handle the case where the user chooses not to enable location services
+//        }
+//        builder.show()
+//    }
 
     private fun uploadFile(fileUris: Array<Uri>?) {
         // Perform the file upload logic here
@@ -273,50 +328,6 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
-
-
-//    // access local storage values : user-id , company-id , access-token
-//    private fun accessLocalStorage(webView: WebView) {
-//
-////        val firebaseMessagingService = MyFirebaseMessagingService()
-//
-//        // Access localStorage using JavaScript
-//        webView.evaluateJavascript(
-//            "(function() { return  JSON.stringify(localStorage); })();"
-//        ) { value ->
-//            // Handle the value retrieved from localStorage here
-//            Log.d("LocalStorage values", "Value from localStorage: $value")
-//        }
-//
-//        webView.evaluateJavascript(
-//            "(function() { return localStorage.getItem('user-id');  })();"
-//        ) { value ->
-//            userid = value
-//            Log.d("LocalStorage values", "user-id : $userid")
-////            firebaseMessagingService.processLocalStorageValues(userid)
-////            firebaseMessagingService.userid = userid
-////            val temp = firebaseMessagingService.userid
-//            Log.d("LocalStorage values---", "company-id : $userid")
-//        }
-//
-//        webView.evaluateJavascript(
-//            "(function() { return localStorage.getItem('access-token');  })();"
-//        ) { value ->
-//            accesstoken = value
-//            Log.d("LocalStorage values", "access-token : $accesstoken")
-////            firebaseMessagingService.accesstoken = accesstoken
-//        }
-//
-//        webView.evaluateJavascript(
-//            "(function() { return localStorage.getItem('company-id'); })();"
-//        ) { value ->
-//            companyid = value
-//            Log.d("LocalStorage values", "company-id : $companyid")
-////            firebaseMessagingService.companyid = companyid
-//        }
-//
-//
-//    }
 
     // access local storage values : user-id , company-id , access-token
     @RequiresApi(Build.VERSION_CODES.O)
@@ -346,7 +357,16 @@ class MainActivity : AppCompatActivity() {
 //                    }, 20000)
 //                    apiRequestToServer()
                     Log.d("Neel", "accesslocalstorage")
-                    askNotificationPermission()
+                    Log.d("Neel userid", "it $companyid")
+
+
+                    // before login the variable value is NULL so after login it is called and if all set then askNotification Permission
+//                    if(userid != "ul") {
+                        Log.d("Neel ----", "ok")
+                         askNotificationPermission()
+//                    }
+
+
 
                 }
             }
@@ -360,7 +380,7 @@ class MainActivity : AppCompatActivity() {
 
 
         Log.d("apiRequestToServer",userid)
-        Log.d("Neel", "api-request")
+        Log.d("Neel", "api-request $userid")
 
         val userData = dataModelItem(registrationToken,"FCM")
         RetrofitInstance.apiInterface.sendToken(userid , companyid, accesstoken, userData ).enqueue(object :
@@ -389,9 +409,9 @@ class MainActivity : AppCompatActivity() {
             override fun onFailure(call: Call<dataModelItem?>, t: Throwable) {
 
                 Log.d("MainActivity POST", "onFailure")
-                if (t is HttpException) {
+//                if (t is HttpException) {
                     Log.d("MainActivity POST", "HTTP Status Code: $t")
-                }
+//                }
             }
 
 
@@ -404,6 +424,9 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled", "MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        service = Intent(this , LocationService::class.java)
+
 
         // Check if the activity was started by tapping on a notification
         if (intent != null && intent.extras != null) {
@@ -430,7 +453,7 @@ class MainActivity : AppCompatActivity() {
         webView.loadUrl("https://mobile.zentrades.pro/")
 //        webView.loadUrl("https://sample-videos.com/download-sample-doc-file.php")     //For Downloading file
 
-        progressBar = findViewById(R.id.progressBar)
+//        progressBar = findViewById(R.id.progressBar)
 
 
         webView.settings.javaScriptEnabled = true
@@ -548,11 +571,13 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
 
+                Log.d("Neel", "page-started $url")
+
                 completely_loaded = false
                 d(TAG, "completely_loaded : $completely_loaded")
                 Log.d("onPageStarted : ", "Value of url(onPage-started) is $url")
 
-                progressBar.visibility = View.VISIBLE
+//                progressBar.visibility = View.VISIBLE
 
             }
 
@@ -569,8 +594,9 @@ class MainActivity : AppCompatActivity() {
                 Log.d("onPageFinished", "ok")
 
 
-                Log.d("Neel", "page-finished")
+                Log.d("Neel", "page-finished $url")
                 accessLocalStorage(webView)
+
 
 
 
@@ -588,7 +614,7 @@ class MainActivity : AppCompatActivity() {
                 super.onPageCommitVisible(view, url)
                 // Your code here
                 Log.d("onPageCommitVisible", "$url")
-                progressBar.visibility = View.GONE
+//                progressBar.visibility = View.GONE
 
             }
 
@@ -608,13 +634,13 @@ class MainActivity : AppCompatActivity() {
                 Log.d("onProgressChange", "ok")
                 Log.d("onProgressChange in", "$newProgress")
 
-                progressBar.progress = newProgress
+//                progressBar.progress = newProgress
                 if (newProgress >= 100) {
                     Log.d("webChromeClient:: onProgressChange in 100 %", "$newProgress")
-                    progressBar.visibility = View.GONE
+//                    progressBar.visibility = View.GONE
                 } else {
                     Log.d("webChromeClient:: onProgressChange in", "$newProgress")
-                    progressBar.visibility = View.VISIBLE
+//                    progressBar.visibility = View.VISIBLE
                 }
             }
 
@@ -813,6 +839,10 @@ class MainActivity : AppCompatActivity() {
         return url.startsWith("https://maps.google.com/maps") && url.contains("daddr=")
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        stopService(service)
+    }
 
 }
 

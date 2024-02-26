@@ -1,4 +1,4 @@
-package com.example.zenmobile
+package pro.zentrades.android
 
 import org.junit.Test
 
