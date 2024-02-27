@@ -77,6 +77,7 @@ class LocationService : Service() {
 
     }
 
+    @SuppressLint("SuspiciousIndentation")
     private fun getNotification():Notification {
 
         val notification = NotificationCompat.Builder ( this , CHANNEL_ID)

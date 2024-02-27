@@ -26,6 +26,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import android.Manifest
+import android.content.IntentSender
 import android.location.LocationManager
 import android.os.Build
 import java.util.regex.Pattern
@@ -35,21 +36,42 @@ import android.widget.ProgressBar
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
+import com.google.android.gms.location.LocationSettingsResponse
+import com.google.android.gms.location.SettingsClient
 import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
 import retrofit2.Call
 import retrofit2.HttpException
 import retrofit2.Response
 
 
+@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
-    lateinit var userid : String
-    lateinit var companyid : String
-    lateinit var accesstoken : String
-    lateinit var registrationToken : String
+    private lateinit var userid : String
+    private lateinit var companyid : String
+    private lateinit var accesstoken : String
+    private lateinit var registrationToken : String
 
     private var service : Intent ?= null
+
+    private lateinit var webView : WebView
+    private var uploadCallback: ValueCallback<Array<Uri>>? = null
+//    lateinit var progressBar : ProgressBar
+
+
+    var redirect = false
+    var completely_loaded = true
+
+
+    companion object {
+        private const val LOCATION_GPS_ENABLE_CODE = 1001
+    }
 
     // Declare the launcher at the top of your Activity/Fragment:
     @RequiresApi(Build.VERSION_CODES.O)
@@ -58,7 +80,6 @@ class MainActivity : AppCompatActivity() {
     ) { isGranted: Boolean ->
         if (isGranted) {
             // FCM SDK (and your app) can post notifications.
-            d(TAG, "Notification :  Granted")
             Log.d("Neel", "notification-granted")
             getTokenFromFCM()
 
@@ -68,7 +89,6 @@ class MainActivity : AppCompatActivity() {
             askNotificationPermission()
         }
     }
-
 
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -136,97 +156,45 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, reload the WebView
-                Log.d(TAG, "onRequestPermissionResult-Granted :  OK")
-
-                Log.d("Neel Location" , "$grantResults[0]")
-
-            } else {
-                // Permission denied, show a message or handle it accordingly
-            }
-        }
-
-        if(requestCode == 100){
-            d(TAG, "Notification :  100")
-        }
-    }
-
-
-//    @RequiresApi(Build.VERSION_CODES.Q)
-//    private fun checkLocationPermission() {
-//        if (ContextCompat.checkSelfPermission(                      //if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && --- ){}
-//                this,
-//                Manifest.permission.ACCESS_FINE_LOCATION
-//            ) != PackageManager.PERMISSION_GRANTED
-//        ) {
-//            ActivityCompat.requestPermissions(
-//                this,
-//                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION , Manifest.permission.ACCESS_COARSE_LOCATION ),
-//                LOCATION_PERMISSION_REQUEST_CODE
-//            )
-//        }
-//    }
-
-
-
-
-
-    private lateinit var webView : WebView
-    private var uploadCallback: ValueCallback<Array<Uri>>? = null
-//    lateinit var progressBar : ProgressBar
-
-
-    var redirect = false
-    var completely_loaded = true
-
-
-    companion object {
-        private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
-    }
-
-//    private lateinit var requestPermissionLauncherNotification : ActivityResultLauncher<Intent>
-
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == 101) {
-            if (resultCode == Activity.RESULT_OK) {
-                // Get the selected file URI(s)
-                val result = WebChromeClient.FileChooserParams.parseResult(resultCode, data)
-//                Log.d("Value of result is", result?.joinToString(", ") ?: "null")
-//                Log.d("Value check","hello")
-                uploadFile(result)
-            } else {
-                // Handle canceled file selection
-                uploadCallback?.onReceiveValue(null)
-                uploadCallback = null
-            }
+                if (resultCode == Activity.RESULT_OK) {
+                    // Get the selected file URI(s)
+                    val result = WebChromeClient.FileChooserParams.parseResult(resultCode, data)
+                    uploadFile(result)
+
+                } else {
+                    // Handle canceled file selection
+                    uploadCallback?.onReceiveValue(null)
+                    uploadCallback = null
+                }
+        }else if(requestCode == LOCATION_GPS_ENABLE_CODE){  // handle result of GPS LOCATION
+                if (resultCode == Activity.RESULT_OK){
+                        Log.d("neel OnActivityResult of GPS Result" , "After clicking Ok - Location is Enable")
+                }
         }
     }
 
     //background permission result
-    val backgroundLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()){
+    private val backgroundLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()){
             if(it){
                 Log.d("neel" , "backgroundlocation")
-//                startService(service)
+                service?.let { ContextCompat.startForegroundService(this, service!!) }
             }
+            // after user give permission for location check for GPS is active or not
+            requestDeviceLocationSettings()
     }
 
     //location permission result
+    @RequiresApi(Build.VERSION_CODES.Q)
     val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         when {
+
             permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
                 // Precise location access granted.
                 Log.d("neel locationpermission" , "Fine")
@@ -243,33 +211,133 @@ class MainActivity : AppCompatActivity() {
 
             permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
                 // Only approximate location access granted.
+
             } else -> {
             // No location access granted.
+            Log.d("neel locationPermissionRequest", "called checkLocationPermission()")
+            checkLocationPermission()
+
         }
+
+        }
+    }
+    private fun checkLocationEnabled(context: Context) {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val isLocationEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+
+        if (!isLocationEnabled) {
+            // Location services are not enabled, request the user to enable them
+            Log.d("neel" ,"Location Service is not Enable")
+            requestDeviceLocationSettings()
+        } else {
+            // Location services are already enabled
+            Log.d("neel" ,"Location Service Enable")
         }
     }
 
+    private fun requestDeviceLocationSettings(){
+        val locationRequest = LocationRequest.create().apply {
+            interval = 10000
+            fastestInterval = 5000
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+        val builder = LocationSettingsRequest.Builder()
+            .addLocationRequest(locationRequest)
 
-    private fun checkLocationPermission(){
+        val client: SettingsClient = LocationServices.getSettingsClient(this)
+        val task: Task<LocationSettingsResponse> = client.checkLocationSettings(builder.build())
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Log.d("neel" , "requestDeviceLocationSettings")
 
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        task.addOnSuccessListener { locationSettingsResponse ->
+            // All location settings are satisfied. The client can initialize
+            // location requests here.
+            Log.d("neel" , "GPS Enable")
 
-                   locationPermissionRequest.launch(arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION))
+            val state = locationSettingsResponse.locationSettingsStates
 
-            } else {
-                // Directly ask for the permission
-                Log.d("neel CheckLocationPermission" , "Ok")
-                service?.let { ContextCompat.startForegroundService(this, it) }
+            val label = "GPS >> (Present: ${state?.isGpsPresent}  | Usable: ${state?.isGpsUsable} ) \n" +
+                        "Network >> ( Present: ${state?.isNetworkLocationPresent} | Usable: ${state?.isNetworkLocationUsable} ) \n" +
+                        "Location >> ( Present: ${state?.isLocationPresent} | Usable: ${state?.isLocationUsable} )"
 
+            Log.d("neel" , label)
+
+            Toast.makeText(this@MainActivity,"LOCATION IS ACTIVE" , Toast.LENGTH_LONG).show()
+        }
+
+        task.addOnFailureListener { exception ->
+            if (exception is ResolvableApiException) {
+                // Location settings are not satisfied, but this can be fixed
+                // by showing the user a dialog.
+                Log.d("neel" , "GPS Not Enable at time of opening the application")
+                try {
+                    // Show the dialog by calling startResolutionForResult(),
+                    // and check the result in onActivityResult().
+                    exception.startResolutionForResult(
+                        this@MainActivity,
+                        LOCATION_GPS_ENABLE_CODE
+                    )
+                } catch (sendEx: IntentSender.SendIntentException) {
+                    // Ignore the error.
+
+                }
             }
         }
     }
 
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun checkLocationPermission() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            ) {
+
+                    Log.d("neel ", "CheckLocationPermission : Ok")
+
+                    //after taking permission check the GPS is unable or not
+//                    checkLocationEnabled(this)   --OR--
+                    requestDeviceLocationSettings()
+
+                    if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        == PackageManager.PERMISSION_GRANTED)  {
+
+                        service?.let { ContextCompat.startForegroundService(this, service!!) }
+                    }
+                    if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        locationPermissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
+                    }
+
+
+            } else if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
+                 && shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION)) {
+
+                 Log.d("nee", "CheckLocationPermission  : shouldShowRequestPermissionRationale")
+
+                    val builder: AlertDialog.Builder = AlertDialog.Builder(this)
+                    builder.setTitle("Location Settings")
+                    builder.setMessage("Location services are disabled. Do you want to enable them?")
+                    builder.setPositiveButton("Yes") { _, _ ->
+
+                            locationPermissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION))
+                    }
+                    builder.setNegativeButton("No")  { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    builder.show()
+
+            } else {
+                Log.d("neel", "CheckLocationPermission  : create launcher")
+                locationPermissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION))
+
+            }
+
+        }
+    }
 
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -277,33 +345,8 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         Log.d(TAG, "onResume :  OK")
 
-//        // Check and request location permission if needed
-//            checkLocationPermission()
     }
 
-//    private fun checkLocationSettings() {
-//        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-//        Log.d(TAG, "checkLocationSetting :  OK")
-//        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-//            Log.d(TAG, "checkLocationSetting - !location-manager:  OK")
-//
-//            showLocationSettingsDialog()
-//        }
-//    }
-
-//    private fun showLocationSettingsDialog() {
-//        val builder = AlertDialog.Builder(this)
-//        builder.setTitle("Location Settings")
-//        builder.setMessage("Location services are disabled. Do you want to enable them?")
-//        builder.setPositiveButton("Yes") { _, _ ->
-//            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-//            startActivity(intent)
-//        }
-//        builder.setNegativeButton("No") { _, _ ->
-//            // Handle the case where the user chooses not to enable location services
-//        }
-//        builder.show()
-//    }
 
     private fun uploadFile(fileUris: Array<Uri>?) {
         // Perform the file upload logic here
@@ -361,10 +404,10 @@ class MainActivity : AppCompatActivity() {
 
 
                     // before login the variable value is NULL so after login it is called and if all set then askNotification Permission
-//                    if(userid != "ul") {
+                    if(userid != "ul") {
                         Log.d("Neel ----", "ok")
                          askNotificationPermission()
-//                    }
+                    }
 
 
 
@@ -443,15 +486,13 @@ class MainActivity : AppCompatActivity() {
 
         window.statusBarColor = resources.getColor(android.R.color.black, theme)   // change the status bar color
 
-
         setContentView(R.layout.activity_main)
 
-//        FirebaseMessaging.getInstance().subscribeToTopic("Notification")
+
 //        val overlayLayout = findViewById<FrameLayout>(R.id.overlayLayout)
         webView= findViewById(R.id.webView)
-//        webView.loadUrl("https://www.ilovepdf.com/pdf_to_word")                       //upload the doc
         webView.loadUrl("https://mobile.zentrades.pro/")
-//        webView.loadUrl("https://sample-videos.com/download-sample-doc-file.php")     //For Downloading file
+
 
 //        progressBar = findViewById(R.id.progressBar)
 
@@ -461,16 +502,13 @@ class MainActivity : AppCompatActivity() {
         webView.settings.domStorageEnabled = true
         webView.settings.databaseEnabled = true
 //        webView.settings.userAgentString = "YourUserAgentString"
-//        webView.settings.setSupportMultipleWindows(true) // Enable support for multiple windows
-//        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
 
 
-
-//        askNotificationPermission()
 
         // Check and request location permission if needed
-        checkLocationPermission()
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            checkLocationPermission()
+        }
 
 
         webView.webViewClient = object : WebViewClient(){
@@ -485,6 +523,7 @@ class MainActivity : AppCompatActivity() {
                 val newUrl = request?.url.toString()
                 Log.d("Override URL : ","override URL is $newUrl")
 
+
                 if(isGoogleMapsUrl(newUrl)) {
                     Log.d("Override URL : ","google map url")
                     // Handle Google Maps URL
@@ -493,36 +532,6 @@ class MainActivity : AppCompatActivity() {
                     startActivity(mapIntent)
                     return true // Return true to prevent WebView from loading the URL
                 }
-//                    if (isGoogleMapsUrl(newUrl)) {
-//                    Log.d(TAG, "Override URL is a Google Maps URL")
-//
-//                    // Create the intent to view the Google Maps URL
-//                    val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(newUrl))
-//
-//                    // Resolve the activity to ensure it's handled by Google Maps
-//                    val packageManager = packageManager
-//                    val activities = packageManager.queryIntentActivities(mapIntent, PackageManager.MATCH_DEFAULT_ONLY)
-//
-//                    Log.d(TAG, "Override URL is a Google Maps URL :  activities $activities")
-//
-//                    // Check if there's an activity that can handle the intent
-//                    if (activities.isNotEmpty()) {
-//                        // Iterate through resolved activities and find the one for Google Maps
-//                        for (activity in activities) {
-//                            if (activity.activityInfo.packageName == "com.google.android.apps.maps") {
-//                                // Found Google Maps activity, set its package name and start the activity
-//                                mapIntent.setPackage(activity.activityInfo.packageName)
-//                                startActivity(mapIntent)
-//                                return true // Return true to prevent WebView from loading the URL
-//                            }
-//                        }
-//                    }
-//
-//                    Log.d(TAG, "Override URL is a Google Maps URL :  activity empty")
-//                    // If Google Maps is not found, fallback to opening the URL in any available browser
-//                    startActivity(mapIntent)
-//                    return true // Return true to prevent WebView from loading the URL
-//                }
 
 
 
@@ -533,6 +542,8 @@ class MainActivity : AppCompatActivity() {
                     return true ;
                 }
 
+
+
                 if(newUrl.contains(".pdf")) {
                     Log.d(TAG, "Override Downloaded file URL is $newUrl")
 //                  val downloadIntent = Intent(Intent.ACTION_VIEW , Uri.parse(newUrl))          //Using intent
@@ -540,6 +551,8 @@ class MainActivity : AppCompatActivity() {
                     view?.loadUrl(newUrl)           //load the url and auto call to setDownloadListener  for downloading file
                     return true
                 }
+
+
 
                 val desiredPattern = "^https://mobile\\.zentrades\\.pro/.*$"                // check URL at the time of logout and then redirect to login page
                 val urlToCheck = newUrl
@@ -549,6 +562,8 @@ class MainActivity : AppCompatActivity() {
 //                    view?.loadUrl(newUrl)
                     return false  // return false to load the url
                 }
+
+
 
                 if(newUrl.contains(".png")) {
                     Log.d(TAG, "Override Image  URL is $newUrl")
@@ -685,41 +700,6 @@ class MainActivity : AppCompatActivity() {
             }
 
 
-//            override fun onGeolocationPermissionsShowPrompt(
-//                origin: String?,
-//                callback: GeolocationPermissions.Callback?
-//            ) {
-//                Log.d(TAG,"onGeolocationPermission origin :  $origin")
-//                showLocationPermissionDialog(callback)
-//            }
-
-//            private fun showLocationPermissionDialog(callback: GeolocationPermissions.Callback?) {
-//                val builder = AlertDialog.Builder(this@MainActivity)
-//                builder.setTitle("Location Permission")
-//                builder.setMessage("This app needs location access to provide relevant content. Do you want to enable it?")
-//                builder.setPositiveButton("Yes") { _, _ ->
-//                    requestLocationPermission(callback)
-//                }
-//                builder.setNegativeButton("No") { _, _ ->
-//                    callback?.invoke(null, false, false)
-//                }
-//
-//                builder.show()
-//            }
-
-
-//            private fun requestLocationPermission(callback: GeolocationPermissions.Callback?) {
-//                Log.d(TAG, "RequestLocationPermission :  OK")
-//                ActivityCompat.requestPermissions(
-//                    this@MainActivity,
-//                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-//                    LOCATION_PERMISSION_REQUEST_CODE
-//                )
-//                Log.d(TAG, "RequestLocationPermission After :  OK")
-//            }
-
-
-
         }
 
 
@@ -768,16 +748,6 @@ class MainActivity : AppCompatActivity() {
 
 
     }
-
-
-    // Function to open the notification settings screen
-//    @RequiresApi(Build.VERSION_CODES.O)
-//    private fun openNotificationSettings(context: Context) {
-//        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-//        intent.putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-//        startActivity(intent)
-////        requestPermissionLauncherNotification.launch(intent)
-//    }
 
 
 //    @Deprecated("Deprecated in Java")
