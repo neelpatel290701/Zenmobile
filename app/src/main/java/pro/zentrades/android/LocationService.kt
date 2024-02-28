@@ -1,16 +1,22 @@
 package pro.zentrades.android
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationAvailability
@@ -37,6 +43,7 @@ class LocationService : Service() {
 
     private var notificationManager : NotificationManager?=null
 
+    @SuppressLint("ForegroundServiceType")
     override fun onCreate() {
         super.onCreate()
 
@@ -56,7 +63,7 @@ class LocationService : Service() {
                 Log.d("neel LocationService", "longitude : $longitude")
                 Log.d("neel LocationService", "latitude : $latitude")
 
-                onNewLocation(locationResult)
+//                onNewLocation(locationResult)
             }
 
         }
@@ -67,22 +74,59 @@ class LocationService : Service() {
             notificationManager?.createNotificationChannel(notificationChannel)
         }
 
+//        startForeground(NOTIFICATION_ID,getNotification())
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_DENIED) {
+            // Without background location permissions the service cannot run in the foreground
+            // Consider informing user or updating your app UI if visible.
+            Log.d("neel" , "Location Service : No backgroundLocation Permission")
+            stopSelf()
+            return
+
+        }else {
+
+            try {
+
+                Log.d("neel" , "Location Service : startNotification")
+                ServiceCompat.startForeground(
+                    this, NOTIFICATION_ID, getNotification(),
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                    } else {
+                        0
+                    }
+                )
+            }catch (e: Exception){
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    && e is ForegroundServiceStartNotAllowedException
+                ) {
+                    // App not in a valid state to start foreground service
+                    // (e.g. started from bg)
+                }
+            }
+
+
+
+        }
+
     }
 
-    @SuppressLint("ForegroundServiceType")
-    private fun onNewLocation(locationResult: LocationResult) {
-
-                location = locationResult.lastLocation
-                startForeground(NOTIFICATION_ID,getNotification())
-
-    }
+//    @SuppressLint("ForegroundServiceType")
+//    private fun onNewLocation(locationResult: LocationResult) {
+//
+//                location = locationResult.lastLocation
+//                startForeground(NOTIFICATION_ID,getNotification())
+//
+//    }
 
     @SuppressLint("SuspiciousIndentation")
     private fun getNotification():Notification {
 
         val notification = NotificationCompat.Builder ( this , CHANNEL_ID)
             .setContentTitle("Location Update ")
-            .setContentText("Latitude-->${location?.latitude}\nLongitude-->${location?.longitude}")
+//            .setContentText("Latitude-->${location?.latitude}\nLongitude-->${location?.longitude}")
+            .setContentText("we are currently tracking your location...")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
