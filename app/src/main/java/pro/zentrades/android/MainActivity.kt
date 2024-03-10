@@ -1,15 +1,22 @@
 package pro.zentrades.android
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.DownloadManager
 import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.location.LocationManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import android.util.Log.d
 import android.view.KeyEvent
@@ -22,19 +29,10 @@ import android.webkit.WebSettings.*
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import android.Manifest
-import android.content.IntentSender
-import android.location.LocationManager
-import android.os.Build
-import java.util.regex.Pattern
-import android.provider.Settings
-import android.view.View
-import android.widget.ProgressBar
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
@@ -46,8 +44,8 @@ import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
 import retrofit2.Call
-import retrofit2.HttpException
 import retrofit2.Response
+import java.util.regex.Pattern
 
 
 @Suppress("DEPRECATION")
@@ -64,6 +62,7 @@ class MainActivity : AppCompatActivity() {
     private var uploadCallback: ValueCallback<Array<Uri>>? = null
 //    lateinit var progressBar : ProgressBar
 
+    private lateinit var androidId : String
 
     var redirect = false
     var completely_loaded = true
@@ -71,6 +70,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val LOCATION_GPS_ENABLE_CODE = 1001
+        private const val REQUEST_IGNORE_BATTERY_OPTIMIZATIONS = 2010
     }
 
     // Declare the launcher at the top of your Activity/Fragment:
@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
 
         } else {
             // TODO: Inform user that that your app will not show notifications.
-            d(TAG, "Notification : Not Granted")
+            d("neel", "Notification : Not Granted")
             askNotificationPermission()
         }
     }
@@ -109,6 +109,11 @@ class MainActivity : AppCompatActivity() {
             val firebaseMessagingService = MyFirebaseMessagingService()
             firebaseMessagingService.onNewToken(token)
             apiRequestToServer()
+
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                checkLocationPermission()
+//            }
+
 //
         })
     }
@@ -132,7 +137,7 @@ class MainActivity : AppCompatActivity() {
                 //       by them granting the POST_NOTIFICATION permission. This UI should provide the user
                 //       "OK" and "No thanks" buttons. If the user selects "OK," directly request the permission.
                 //       If the user selects "No thanks," allow the user to continue without notifications.
-                d(TAG, "askNotification Permission :  shouldShowRequestPermission rational")
+                d("neel", "askNotification Permission :  shouldShowRequestPermission rational")
                 Log.d("Neel", "asknotification")
 
                 val builder = AlertDialog.Builder(this)
@@ -150,7 +155,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 // Directly ask for the permission
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                d(TAG, "askNotification Permission :  launch requsetpermissionlauncher")
+                d("neel", "askNotification Permission :  launch requsetpermissionlauncher")
             }
         }
     }
@@ -172,8 +177,19 @@ class MainActivity : AppCompatActivity() {
                     uploadCallback = null
                 }
         }else if(requestCode == LOCATION_GPS_ENABLE_CODE){  // handle result of GPS LOCATION
+//               Log.d("hello" ,"Location GPS : $resultCode")
                 if (resultCode == Activity.RESULT_OK){
                         Log.d("neel OnActivityResult of GPS Result" , "After clicking Ok - Location is Enable")
+                }
+
+        }else if(requestCode == REQUEST_IGNORE_BATTERY_OPTIMIZATIONS){
+
+                Log.d("hello" , "resultcode  : $resultCode")
+
+                if(resultCode == Activity.RESULT_OK) {
+                    Log.d("hello", "get permission for ignore battery optimization")
+                }else{
+                    Log.d("hello" , "permission not granted for ignore battery optimization $resultCode")
                 }
         }
     }
@@ -182,10 +198,17 @@ class MainActivity : AppCompatActivity() {
     private val backgroundLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()){
             if(it){
                 Log.d("neel" , "backgroundlocation")
+
+                // after user give permission for location check for GPS is active or not
+                requestDeviceLocationSettings()
+
+                service = Intent(this , LocationService::class.java).apply {
+                    putExtra("userId",userid)
+                    putExtra("companyId" , companyid)
+                    putExtra("androidId" , androidId)
+                }
                 service?.let { ContextCompat.startForegroundService(this, service!!) }
             }
-            // after user give permission for location check for GPS is active or not
-            requestDeviceLocationSettings()
     }
 
     //location permission result
@@ -256,11 +279,11 @@ class MainActivity : AppCompatActivity() {
 
             val state = locationSettingsResponse.locationSettingsStates
 
-            val label = "GPS >> (Present: ${state?.isGpsPresent}  | Usable: ${state?.isGpsUsable} ) \n" +
-                        "Network >> ( Present: ${state?.isNetworkLocationPresent} | Usable: ${state?.isNetworkLocationUsable} ) \n" +
-                        "Location >> ( Present: ${state?.isLocationPresent} | Usable: ${state?.isLocationUsable} )"
+//            val label = "GPS >> (Present: ${state?.isGpsPresent}  | Usable: ${state?.isGpsUsable} ) \n" +
+//                        "Network >> ( Present: ${state?.isNetworkLocationPresent} | Usable: ${state?.isNetworkLocationUsable} ) \n" +
+//                        "Location >> ( Present: ${state?.isLocationPresent} | Usable: ${state?.isLocationUsable} )"
 
-            Log.d("neel" , label)
+//            Log.d("neel" , label)
 
             Toast.makeText(this@MainActivity,"LOCATION IS ACTIVE" , Toast.LENGTH_LONG).show()
         }
@@ -391,22 +414,30 @@ class MainActivity : AppCompatActivity() {
                 webView.evaluateJavascript(
                     "(function() { return localStorage.getItem('access-token'); })();"
                 ) { accessTokenValue ->
+//                    Log.d("neel" , "accesstoken : $accessTokenValue")
                     accesstoken = accessTokenValue.substring(1,accessTokenValue.length-1)
-                    Log.d("LocalStorage values", "access-token : $accesstoken")
+                    Log.d("neel", "access-token : $accesstoken")
+
 
 //                    // After all variables are initialized, call apiRequestToServer()
 //                    Handler().postDelayed({
 //                        apiRequestToServer()
 //                    }, 20000)
 //                    apiRequestToServer()
+
                     Log.d("Neel", "accesslocalstorage")
-                    Log.d("Neel userid", "it $companyid")
+                    Log.d("Neel ", "access-Token  : $accesstoken")
 
 
                     // before login the variable value is NULL so after login it is called and if all set then askNotification Permission
                     if(userid != "ul") {
                         Log.d("Neel ----", "ok")
                          askNotificationPermission()
+
+//                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                            checkLocationPermission()
+//                        }
+//
                     }
 
 
@@ -425,6 +456,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("apiRequestToServer",userid)
         Log.d("Neel", "api-request $userid")
 
+
         val userData = dataModelItem(registrationToken,"FCM")
         RetrofitInstance.apiInterface.sendToken(userid , companyid, accesstoken, userData ).enqueue(object :
             retrofit2.Callback<dataModelItem?>{
@@ -442,6 +474,8 @@ class MainActivity : AppCompatActivity() {
                         // Handle unsuccessful response (e.g., non-200 status code)
                         Log.e("MainActivity POST", "Unsuccessful response: ${response.code()}")
                     }
+
+
 
                 } catch (e: Exception) {
                     Log.e("MainActivity POST", "Error: ${e.message}", e)
@@ -462,21 +496,62 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    @SuppressLint("HardwareIds")
+    private fun getAndroidId(context: Context): String {
+        return Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+    }
+
+
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+        val packageName = applicationContext.packageName
+        return powerManager.isIgnoringBatteryOptimizations(packageName)
+    }
+
+//    private val Ignore_Battery_Optimization = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+//        if(it){
+//            Log.d("hello" , "Ignore_Battery_Optimization")
+//        }
+//    }
+//
+//
+    @SuppressLint("BatteryLife")
+    private fun requestBatteryOptimizations() {
+        Log.d("hello","ask for permisssion")
+//        Ignore_Battery_Optimization.launch(Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+//
+            val packageName = applicationContext.packageName
+            val intent = Intent()
+            intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+            intent.setData(Uri.parse("package:$packageName"))
+            startActivityForResult(intent, REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+
+
+}
 
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("SetJavaScriptEnabled", "MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        service = Intent(this , LocationService::class.java)
 
+        // Check if the app is not already exempted from battery optimizations
+//        if (!isIgnoringBatteryOptimizations()) {
+//            // Request exemption from battery optimizations
+//            Log.d("hello","no permission for ignorebattery")
+//            requestBatteryOptimizations()
+//        }
+
+
+        androidId = getAndroidId(applicationContext)
+        d("neel" , "Device Id : $androidId")
 
         // Check if the activity was started by tapping on a notification
         if (intent != null && intent.extras != null) {
             val dataPayload = intent.extras?.getString("click_action")
             if (dataPayload != null) {
                 // Handle the data payload here
-                Log.d("MainActivity", "Data payload: $dataPayload")
+                d("MainActivity", "Data payload: $dataPayload")
 
             }
         }
@@ -506,9 +581,9 @@ class MainActivity : AppCompatActivity() {
 
 
         // Check and request location permission if needed
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            checkLocationPermission()
-        }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//            checkLocationPermission()
+//        }
 
 
         webView.webViewClient = object : WebViewClient(){
@@ -521,11 +596,11 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
 
                 val newUrl = request?.url.toString()
-                Log.d("Override URL : ","override URL is $newUrl")
+                d("Override URL : ","override URL is $newUrl")
 
 
                 if(isGoogleMapsUrl(newUrl)) {
-                    Log.d("Override URL : ","google map url")
+                    d("Override URL : ","google map url")
                     // Handle Google Maps URL
                     val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(newUrl))
                     mapIntent.setPackage("com.google.android.apps.maps") // Specify the package to ensure it opens in Google Maps
@@ -545,7 +620,7 @@ class MainActivity : AppCompatActivity() {
 
 
                 if(newUrl.contains(".pdf")) {
-                    Log.d(TAG, "Override Downloaded file URL is $newUrl")
+                    d(TAG, "Override Downloaded file URL is $newUrl")
 //                  val downloadIntent = Intent(Intent.ACTION_VIEW , Uri.parse(newUrl))          //Using intent
 //                  startActivity((downloadIntent))
                     view?.loadUrl(newUrl)           //load the url and auto call to setDownloadListener  for downloading file
@@ -566,7 +641,7 @@ class MainActivity : AppCompatActivity() {
 
 
                 if(newUrl.contains(".png")) {
-                    Log.d(TAG, "Override Image  URL is $newUrl")
+                    d(TAG, "Override Image  URL is $newUrl")
                     view?.loadUrl(newUrl)
                     return true
                 }
@@ -586,11 +661,11 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
 
-                Log.d("Neel", "page-started $url")
+                d("Neel", "page-started $url")
 
                 completely_loaded = false
                 d(TAG, "completely_loaded : $completely_loaded")
-                Log.d("onPageStarted : ", "Value of url(onPage-started) is $url")
+                d("onPageStarted : ", "Value of url(onPage-started) is $url")
 
 //                progressBar.visibility = View.VISIBLE
 
@@ -606,10 +681,10 @@ class MainActivity : AppCompatActivity() {
                         "console.log('user-id is : '+data); })()")
 
 
-                Log.d("onPageFinished", "ok")
+                d("onPageFinished", "ok")
 
 
-                Log.d("Neel", "page-finished $url")
+                d("Neel", "page-finished $url") // take the values from the local storage after page is loaded
                 accessLocalStorage(webView)
 
 
@@ -628,7 +703,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPageCommitVisible(view: WebView?, url: String?) {
                 super.onPageCommitVisible(view, url)
                 // Your code here
-                Log.d("onPageCommitVisible", "$url")
+                d("onPageCommitVisible", "$url")
 //                progressBar.visibility = View.GONE
 
             }
@@ -646,15 +721,15 @@ class MainActivity : AppCompatActivity() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 super.onProgressChanged(view, newProgress)
 
-                Log.d("onProgressChange", "ok")
-                Log.d("onProgressChange in", "$newProgress")
+                d("onProgressChange", "ok")
+                d("onProgressChange in", "$newProgress")
 
 //                progressBar.progress = newProgress
                 if (newProgress >= 100) {
-                    Log.d("webChromeClient:: onProgressChange in 100 %", "$newProgress")
+                    d("webChromeClient:: onProgressChange in 100 %", "$newProgress")
 //                    progressBar.visibility = View.GONE
                 } else {
-                    Log.d("webChromeClient:: onProgressChange in", "$newProgress")
+                    d("webChromeClient:: onProgressChange in", "$newProgress")
 //                    progressBar.visibility = View.VISIBLE
                 }
             }
@@ -689,9 +764,9 @@ class MainActivity : AppCompatActivity() {
                 intent.addCategory(Intent.CATEGORY_OPENABLE)
                 intent.type = "*/*"
 
-                Log.d("Value of result is", "neel")
+                d("Value of result is", "neel")
                 uploadCallback = filePathCallback
-                Log.d("Value of upload-callback is",uploadCallback.toString())
+                d("Value of upload-callback is",uploadCallback.toString())
 
                 val chooserIntent = Intent.createChooser(intent, "Choose File")
                 startActivityForResult(chooserIntent, 101)
@@ -706,14 +781,14 @@ class MainActivity : AppCompatActivity() {
         webView.setDownloadListener(object : DownloadListener {
             override fun onDownloadStart(url: String?, userAgent: String?, contentDisposition: String?, mimeType: String?, contentLength: Long) {
                 // Your implementation here
-                Log.d("Download File","Downloaded file URL is $url")
+                d("Download File","Downloaded file URL is $url")
 //                val downloadIntent = Intent(Intent.ACTION_VIEW , Uri.parse(url))          //Using intent
 //                startActivity((downloadIntent))
 //                return
 
 
                 // Create a DownloadManager request
-                val request = android.app.DownloadManager.Request(Uri.parse(url))
+                val request = DownloadManager.Request(Uri.parse(url))
 
                 // Set the MIME type
                 request.setMimeType(mimeType)
@@ -732,11 +807,11 @@ class MainActivity : AppCompatActivity() {
                 request.allowScanningByMediaScanner()
 
                 // Show a notification when the download is complete
-                request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
 
                 // Get the DownloadManager service and enqueue the request
                 val context: Context = webView.context
-                val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                val manager = context.getSystemService(DOWNLOAD_SERVICE) as DownloadManager
                 manager.enqueue(request)
 
                 // Inform the user that the download has started
