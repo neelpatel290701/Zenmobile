@@ -43,6 +43,11 @@ import com.google.android.gms.location.SettingsClient
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Response
 import java.util.regex.Pattern
@@ -86,7 +91,12 @@ class MainActivity : AppCompatActivity() {
         } else {
             // TODO: Inform user that that your app will not show notifications.
             d("neel", "Notification : Not Granted")
-            askNotificationPermission()
+//            askNotificationPermission()
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+
+                    checkLocationPermission()
+                }
         }
     }
 
@@ -106,16 +116,17 @@ class MainActivity : AppCompatActivity() {
             d("Firebase Notification", "Token received :  $token")
             Log.d("Neel", "get token")
 
-            val firebaseMessagingService = MyFirebaseMessagingService()
-            firebaseMessagingService.onNewToken(token)
+//            val firebaseMessagingService = MyFirebaseMessagingService()
+//            firebaseMessagingService.onNewToken(token)
+
             apiRequestToServer()
 
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//                checkLocationPermission()
-//            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                checkLocationPermission()
+            }
 
-//
         })
+
     }
 
     private fun askNotificationPermission() {
@@ -237,8 +248,9 @@ class MainActivity : AppCompatActivity() {
 
             } else -> {
             // No location access granted.
-            Log.d("neel locationPermissionRequest", "called checkLocationPermission()")
-            checkLocationPermission()
+            Log.d("neel " , "locationpermission  :  Not Granted")
+//            Log.d("neel locationPermissionRequest", "called checkLocationPermission()")
+//            checkLocationPermission()
 
         }
 
@@ -419,6 +431,7 @@ class MainActivity : AppCompatActivity() {
                     Log.d("neel", "access-token : $accesstoken")
 
 
+
 //                    // After all variables are initialized, call apiRequestToServer()
 //                    Handler().postDelayed({
 //                        apiRequestToServer()
@@ -432,15 +445,15 @@ class MainActivity : AppCompatActivity() {
                     // before login the variable value is NULL so after login it is called and if all set then askNotification Permission
                     if(userid != "ul") {
                         Log.d("Neel ----", "ok")
-                         askNotificationPermission()
 
-//                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//                            checkLocationPermission()
-//                        }
-//
+                            askNotificationPermission()
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+
+                            checkLocationPermission()
+                        }
+
                     }
-
-
 
                 }
             }
@@ -450,49 +463,61 @@ class MainActivity : AppCompatActivity() {
 
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun apiRequestToServer(){
+    private fun apiRequestToServer() {
 
 
-        Log.d("apiRequestToServer",userid)
+        Log.d("apiRequestToServer", userid)
         Log.d("Neel", "api-request $userid")
 
 
-        val userData = dataModelItem(registrationToken,"FCM")
-        RetrofitInstance.apiInterface.sendToken(userid , companyid, accesstoken, userData ).enqueue(object :
-            retrofit2.Callback<dataModelItem?>{
-            override fun onResponse(
-                call: Call<dataModelItem?>,
-                response: Response<dataModelItem?>
-            ) {
-                try {
-                    if (response.isSuccessful) {
-                        val responseData = response.body()
-                        // Process responseData according to your application's logic
-                        Log.d("MainActivity POST", "Success! Response Data: $responseData")
-                        Log.d("MainActivity POST", "Success! Response Code: ${response}")
-                    } else {
-                        // Handle unsuccessful response (e.g., non-200 status code)
-                        Log.e("MainActivity POST", "Unsuccessful response: ${response.code()}")
-                    }
+        webView.evaluateJavascript(
+            "(function() { return localStorage.getItem('access-token'); })();"
+        ) { accessTokenValue ->
+//                    Log.d("neel" , "accesstoken : $accessTokenValue")
+            accesstoken = accessTokenValue.substring(1, accessTokenValue.length - 1)
+            Log.d("neel", "access-token : $accesstoken")
 
 
 
-                } catch (e: Exception) {
-                    Log.e("MainActivity POST", "Error: ${e.message}", e)
-                }
 
-            }
+                val userData = dataModelItem(registrationToken, "FCM")
+                RetrofitInstance.apiInterface.sendToken(userid, companyid, accesstoken, userData)
+                    .enqueue(object :
+                        retrofit2.Callback<dataModelItem?> {
+                        override fun onResponse(
+                            call: Call<dataModelItem?>,
+                            response: Response<dataModelItem?>
+                        ) {
+                            try {
+                                if (response.isSuccessful) {
+                                    val responseData = response.body()
+                                    // Process responseData according to your application's logic
+                                    Log.d("MainActivity POST", "Success! Response Data: $responseData")
+                                    Log.d("MainActivity POST", "Success! Response Code: ${response}")
+                                } else {
+                                    // Handle unsuccessful response (e.g., non-200 status code)
+                                    Log.e("MainActivity POST", "Unsuccessful response: ${response.code()}")
+                                }
 
-            override fun onFailure(call: Call<dataModelItem?>, t: Throwable) {
 
-                Log.d("MainActivity POST", "onFailure")
-//                if (t is HttpException) {
-                    Log.d("MainActivity POST", "HTTP Status Code: $t")
-//                }
-            }
+                            } catch (e: Exception) {
+                                Log.e("MainActivity POST", "Error: ${e.message}", e)
+                            }
+
+                        }
+
+                        override fun onFailure(call: Call<dataModelItem?>, t: Throwable) {
+
+                            Log.d("MainActivity POST", "onFailure")
+        //                if (t is HttpException) {
+                            Log.d("MainActivity POST", "HTTP Status Code: $t")
+        //                }
+                        }
 
 
-        })
+                    })
+
+    }
 
     }
 
