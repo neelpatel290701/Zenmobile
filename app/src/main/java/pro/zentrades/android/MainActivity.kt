@@ -16,6 +16,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
+import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
 import android.util.Log.d
@@ -33,7 +34,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -50,6 +53,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Response
+import java.io.ByteArrayOutputStream
 import java.util.regex.Pattern
 
 
@@ -76,6 +80,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val LOCATION_GPS_ENABLE_CODE = 1001
         private const val REQUEST_IGNORE_BATTERY_OPTIMIZATIONS = 2010
+        private const val FILE_CHOOSER_REQUEST_CODE = 101
     }
 
     // Declare the launcher at the top of your Activity/Fragment:
@@ -171,22 +176,83 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun bitmapToUri(bitmap: Bitmap): Uri {
+        val bytes = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
+        val path = MediaStore.Images.Media.insertImage(
+            applicationContext.contentResolver,
+            bitmap,
+            "Image",
+            null
+        )
+        return Uri.parse(path)
+    }
+
+    private fun handleFileURIs(data : Intent?){
+
+
+        if (data != null && data.data != null) {
+
+                Log.d("handleFileURIs" , "Single File Selected")
+                // File picker selected
+                val uri = data.data!!
+                uploadCallback?.onReceiveValue(arrayOf(uri))
+                uploadCallback = null
+
+        } else if (data?.clipData != null) {
+
+                Log.d("handleFileURIs" , "Multiple Files Selected")
+                // File picker selected (multiple files)
+                val uris = mutableListOf<Uri>()
+                for (i in 0 until data.clipData!!.itemCount) {
+                    val uri = data.clipData!!.getItemAt(i).uri
+                    uris.add(uri)
+                }
+
+                if (uris.isNotEmpty()) {
+                    uploadCallback?.onReceiveValue(uris.toTypedArray())
+                    uploadCallback = null
+                }
+
+        } else if (data?.extras?.containsKey("data") == true) {
+
+                Log.d("handleFileURIs" , "Camera Photo Selected")
+                // Camera selected
+                // Handle camera capture
+
+                val imageBitmap = data.extras?.get("data") as Bitmap?
+                if (imageBitmap != null) {
+                    // Convert Bitmap to Uri
+                    val uri = bitmapToUri(imageBitmap)
+                    // Pass the Uri to the uploadCallback
+                    uploadCallback?.onReceiveValue(arrayOf(uri))
+                    uploadCallback = null
+                }
+
+        } else {
+
+            // Neither file picker nor camera selected
+        }
+
+    }
+
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == 101) {
-                if (resultCode == Activity.RESULT_OK) {
-                    // Get the selected file URI(s)
-                    val result = WebChromeClient.FileChooserParams.parseResult(resultCode, data)
-                    uploadFile(result)
+        if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+
+               if (resultCode == Activity.RESULT_OK) {
+
+                        handleFileURIs(data)
 
                 } else {
-                    // Handle canceled file selection
-                    uploadCallback?.onReceiveValue(null)
-                    uploadCallback = null
+
+                   Log.d("onActivityResult" , "File Chooser : Result : Not Ok")
                 }
+
+
         }else if(requestCode == LOCATION_GPS_ENABLE_CODE){  // handle result of GPS LOCATION
 //               Log.d("hello" ,"Location GPS : $resultCode")
                 if (resultCode == Activity.RESULT_OK){
@@ -204,6 +270,63 @@ class MainActivity : AppCompatActivity() {
                 }
         }
     }
+
+    private fun chooseFileFromMedia(){
+
+        // Open file chooser or camera here
+        val fileIntent = Intent(Intent.ACTION_GET_CONTENT)
+        fileIntent.addCategory(Intent.CATEGORY_OPENABLE)
+        fileIntent.type = "*/*"
+        fileIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true)
+
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+
+
+        val chooserIntent = Intent.createChooser(fileIntent, "Choose File")
+
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(cameraIntent))
+
+        startActivityForResult(chooserIntent, 101)
+
+
+    }
+
+
+
+    //camera permission result
+    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()){
+            if(it){
+                Log.d("neel" , "CameraPermission Okk")
+
+                    chooseFileFromMedia()
+
+            }else{
+
+                // Open file chooser or camera here
+                val fileIntent = Intent(Intent.ACTION_GET_CONTENT)
+                fileIntent.addCategory(Intent.CATEGORY_OPENABLE)
+                fileIntent.type = "*/*"
+                fileIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true)
+
+
+                val chooserIntent = Intent.createChooser(fileIntent, "Choose File")
+                startActivityForResult(chooserIntent, 101)
+
+            }
+    }
+
+    private fun checkCameraPermission() {
+
+        if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
+
+                 cameraPermission.launch(Manifest.permission.CAMERA)
+        }else{
+
+            chooseFileFromMedia()
+        }
+    }
+
+
 
     //background permission result
     private val backgroundLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()){
@@ -391,7 +514,7 @@ class MainActivity : AppCompatActivity() {
 
         fileUris?.forEach { uri ->
             val fileName = uri.lastPathSegment
-//            Log.d("Value of fileUris is", fileName ?: "null")
+            Log.d("neel", "Value of fileUris is : $fileName")
 
             // Process the file name as needed
         }
@@ -557,6 +680,10 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("SetJavaScriptEnabled", "MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        // Handle the splash screen transition.
+        installSplashScreen()
+
         super.onCreate(savedInstanceState)
 
 
@@ -779,22 +906,22 @@ class MainActivity : AppCompatActivity() {
 //            }
 
             // For Android 5.0+
+            @SuppressLint("IntentReset")
             override fun onShowFileChooser(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
                 fileChooserParams: FileChooserParams?
             ): Boolean {
-                // Open file chooser or camera here
-                val intent = Intent(Intent.ACTION_GET_CONTENT)
-                intent.addCategory(Intent.CATEGORY_OPENABLE)
-                intent.type = "*/*"
+
+                Log.d("neel" ,"onShowFileChooser")
+
+                checkCameraPermission()   // take permission for camera access
+
 
                 d("Value of result is", "neel")
                 uploadCallback = filePathCallback
                 d("Value of upload-callback is",uploadCallback.toString())
 
-                val chooserIntent = Intent.createChooser(intent, "Choose File")
-                startActivityForResult(chooserIntent, 101)
 
                 return true
             }
