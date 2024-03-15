@@ -30,7 +30,7 @@ import kotlin.math.*
 @Suppress("DEPRECATION")
 class LocationService : Service() {
 
-    companion object{
+    companion object {
         const val CHANNEL_ID = "1234"
         const val NOTIFICATION_ID = 1234
     }
@@ -40,40 +40,39 @@ class LocationService : Service() {
     private var locationRequest: LocationRequest? = null
     private var location: Location? = null
 
-    val Location_Send = DatabaseClass()  // create instance of Firebase database
+    val LocationSendToDatabase = DatabaseClass()  // create instance of Firebase database
 
-    var userID : String ?  = null
-    var companyID : String ? = null
-    var deviceId : String ? = null
+    var userID: String? = null
+    var companyID: String? = null
+    var deviceId: String? = null
 
-    private var latitude1 : Double? = null
-    private var longitude1 : Double? = null
-    private var latitude2 : Double? = null
-    private var longitude2 : Double? = null
-    private var Total_distance : Double = 0.0
+    private var latitude1: Double? = null
+    private var longitude1: Double? = null
+    private var latitude2: Double? = null
+    private var longitude2: Double? = null
+    private var Total_distance: Double = 0.0
 
-
-    private var notificationManager : NotificationManager?=null
-
+    private var notificationManager: NotificationManager? = null
 
 
     fun distance(
         lat1: Double,
         lon1: Double,
         lat2: Double,
-        lon2: Double): Double {
+        lon2: Double
+    ): Double {
 
-            val R = 6371 // Radius of the earth in km
-            val dLat = deg2rad(lat2 - lat1)  // deg2rad below
-            val dLon = deg2rad(lon2 - lon1)
-            val a =
-                sin(dLat / 2) * sin(dLat / 2) +
-                        cos(deg2rad(lat1)) * cos(deg2rad(lat2)) *
-                        sin(dLon / 2) * sin(dLon / 2)
+        val R = 6371 // Radius of the earth in km
+        val dLat = deg2rad(lat2 - lat1)  // deg2rad below
+        val dLon = deg2rad(lon2 - lon1)
+        val a =
+            sin(dLat / 2) * sin(dLat / 2) +
+                    cos(deg2rad(lat1)) * cos(deg2rad(lat2)) *
+                    sin(dLon / 2) * sin(dLon / 2)
 
-            val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-            val d = R * c // Distance in km
-            return d
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        val d = R * c // Distance in km
+        return d
     }
 
     fun deg2rad(deg: Double): Double {
@@ -81,20 +80,21 @@ class LocationService : Service() {
     }
 
 
-
     @SuppressLint("ForegroundServiceType")
     override fun onCreate() {
         super.onCreate()
 
 
-        Log.d("neel","Location onCreate() ")
+        Log.d("neel", "Location onCreate() ")
 //
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
-        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000).setIntervalMillis(500).build()
+        locationRequest =
+            LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000).setIntervalMillis(500)
+                .build()
 
-        locationCallback= object : LocationCallback(){
+        locationCallback = object : LocationCallback() {
 
-            override fun onLocationResult(locationResult: LocationResult) { 
+            override fun onLocationResult(locationResult: LocationResult) {
                 super.onLocationResult(locationResult)
                 location = locationResult.lastLocation
 
@@ -106,34 +106,36 @@ class LocationService : Service() {
 
 //                Location.sendLocation(longitude_curr.toString())
 
-                if(latitude1 == null && longitude1 == null){
+                if (latitude1 == null && longitude1 == null) {
 
-                        latitude1 = latitude_curr
-                        longitude1 = longitude_curr
+                    latitude1 = latitude_curr
+                    longitude1 = longitude_curr
 
-                }else{
+                } else {
 
-                       latitude2 = latitude_curr
-                       longitude2 = longitude_curr
+                    latitude2 = latitude_curr
+                    longitude2 = longitude_curr
 
-                    val distance = distance(latitude1!! , longitude1!! , latitude2!! , longitude2!!)
-                    val distance_meter = distance*1000
+                    val distance = distance(latitude1!!, longitude1!!, latitude2!!, longitude2!!)
+                    val distance_meter = distance * 1000
 
-                    Log.d("neel" , "userId : $userID and companyId : $companyID")
-                    Log.d("neel" , "Distance-meter diff  is : $distance_meter \n\n")
+                    Log.d("neel", "userId : $userID and companyId : $companyID")
+                    Log.d("neel", "Distance-meter diff  is : $distance_meter \n\n")
 
-                    if(distance_meter > 5){
+                    if (distance_meter > 5) {
 
                         Total_distance += (distance_meter)
 
-                        Location_Send.sendLocation("$Total_distance" , "$userID" , "$companyID",
-                            "$deviceId" , "$latitude2" , "$longitude2" )
+                        LocationSendToDatabase.sendLocation(
+                            "$Total_distance", "$userID", "$companyID",
+                            "$deviceId", "$latitude2", "$longitude2"
+                        )
 
                         latitude1 = latitude2
                         longitude1 = longitude2
 
 
-                        Log.d("neel" , "Distance is : $Total_distance")
+                        Log.d("neel", "Distance is : $Total_distance")
 
                     }
 
@@ -146,25 +148,30 @@ class LocationService : Service() {
 
 
         notificationManager = this.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
-            val notificationChannel = NotificationChannel(CHANNEL_ID , "Location",NotificationManager.IMPORTANCE_HIGH)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationChannel =
+                NotificationChannel(CHANNEL_ID, "Location", NotificationManager.IMPORTANCE_HIGH)
             notificationManager?.createNotificationChannel(notificationChannel)
         }
 
 //        startForeground(NOTIFICATION_ID,getNotification())
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_DENIED) {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_DENIED
+        ) {
             // Without background location permissions the service cannot run in the foreground
             // Consider informing user or updating your app UI if visible.
-            Log.d("neel" , "Location Service : No backgroundLocation Permission")
+            Log.d("neel", "Location Service : No backgroundLocation Permission")
             stopSelf()
             return
 
-        }else {
+        } else {
 
             try {
 
-                Log.d("neel" , "Location Service : startNotification")
+                Log.d("neel", "Location Service : startNotification")
                 ServiceCompat.startForeground(
                     this, NOTIFICATION_ID, getNotification(),
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -173,7 +180,7 @@ class LocationService : Service() {
                         0
                     }
                 )
-            }catch (e: Exception){
+            } catch (e: Exception) {
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
                     && e is ForegroundServiceStartNotAllowedException
@@ -184,16 +191,15 @@ class LocationService : Service() {
             }
 
 
-
         }
 
     }
 
 
     @SuppressLint("SuspiciousIndentation")
-    private fun getNotification():Notification {
+    private fun getNotification(): Notification {
 
-        val notification = NotificationCompat.Builder ( this , CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Location Update ")
 //            .setContentText("Latitude-->${location?.latitude}\nLongitude-->${location?.longitude}")
             .setContentText("we are currently tracking your location...")
@@ -202,35 +208,36 @@ class LocationService : Service() {
             .setOngoing(true)
             .setChannelId(CHANNEL_ID)
 
-            return notification.build()
+        return notification.build()
     }
 
 
-
-
     @Suppress("MissingPermission")
-    private  fun createLocationrequset(){
+    private fun createLocationrequset() {
         try {
-            fusedLocationProviderClient?.requestLocationUpdates(locationRequest!!,locationCallback!!,null)
-        }catch (e:Exception){
+            fusedLocationProviderClient?.requestLocationUpdates(
+                locationRequest!!,
+                locationCallback!!,
+                null
+            )
+        } catch (e: Exception) {
             e.printStackTrace()
-            Log.d("neel","createlocationrequest exception")
+            Log.d("neel", "createlocationrequest exception")
         }
 
 
     }
 
-    private fun removeLocationUpdates(){
+    private fun removeLocationUpdates() {
 
-            locationCallback?.let {
-                fusedLocationProviderClient?.removeLocationUpdates(it)
-            }
+        locationCallback?.let {
+            fusedLocationProviderClient?.removeLocationUpdates(it)
+        }
 
         stopForeground(true)
         stopSelf()
 
     }
-
 
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -243,7 +250,7 @@ class LocationService : Service() {
         return START_STICKY
     }
 
-    override fun onBind(intent: Intent): IBinder ?= null
+    override fun onBind(intent: Intent): IBinder? = null
 
     override fun onDestroy() {
         super.onDestroy()

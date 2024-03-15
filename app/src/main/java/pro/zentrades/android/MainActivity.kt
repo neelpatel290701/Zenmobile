@@ -34,7 +34,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.google.android.gms.common.api.ResolvableApiException
@@ -46,35 +45,27 @@ import com.google.android.gms.location.SettingsClient
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import retrofit2.Call
+import retrofit2.Callback
 import retrofit2.Response
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.regex.Pattern
 
 
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var userid : String
-    private lateinit var companyid : String
-    private lateinit var accesstoken : String
-    private lateinit var registrationToken : String
+    private lateinit var userid: String
+    private lateinit var companyid: String
+    private lateinit var accesstoken: String
+    private lateinit var registrationToken: String
+    private lateinit var androidId: String
 
-    private var service : Intent ?= null
+    private lateinit var webView: WebView
 
-    private lateinit var webView : WebView
+    private var service: Intent? = null
     private var uploadCallback: ValueCallback<Array<Uri>>? = null
-//    lateinit var progressBar : ProgressBar
-
-    private lateinit var androidId : String
-
-    var redirect = false
-    var completely_loaded = true
 
 
     companion object {
@@ -83,35 +74,40 @@ class MainActivity : AppCompatActivity() {
         private const val FILE_CHOOSER_REQUEST_CODE = 101
     }
 
-    // Declare the launcher at the top of your Activity/Fragment:
+
+    // Check the Notification Result after creating launcher
     @RequiresApi(Build.VERSION_CODES.O)
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // FCM SDK (and your app) can post notifications.
+            // isGranted-True : called the getTokenFromFCM
             Log.d("Neel", "notification-granted")
             getTokenFromFCM()
 
         } else {
+
             // TODO: Inform user that that your app will not show notifications.
             d("neel", "Notification : Not Granted")
 //            askNotificationPermission()
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-
-                    checkLocationPermission()
-                }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                checkLocationPermission()
+            }
         }
     }
 
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun getTokenFromFCM(){
+    private fun getTokenFromFCM() {
 
         FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
             if (!task.isSuccessful) {
-                Log.w("Firebase Notification", "Fetching FCM registration token failed", task.exception)
+                Log.d(
+                    "Firebase Notification",
+                    "Fetching FCM registration token failed",
+                    task.exception
+                )
                 return@OnCompleteListener
             }
 
@@ -137,13 +133,16 @@ class MainActivity : AppCompatActivity() {
     private fun askNotificationPermission() {
         // This is only necessary for API level >= 33 (TIRAMISU)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED
+
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
             ) {
-                // FCM SDK (and your app) can post notifications.
+
                 Log.d("neel", "notification permission ok")
 
-                if( !(::accesstoken.isInitialized)) {    // if permission granted but token is not initialized
+                if (!(::accesstoken.isInitialized)) {    // if permission granted but token is not initialized
                     getTokenFromFCM()
                     Log.d("neel", "token not initialized - called getTokenFromFCM() ")
                 }
@@ -162,11 +161,9 @@ class MainActivity : AppCompatActivity() {
                     .setPositiveButton("Enable") { _, _ ->
                         requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
 
-                    }
-                    .setNegativeButton("Cancel") { dialog, _ ->
+                    }.setNegativeButton("Cancel") { dialog, _ ->
                         dialog.dismiss()
-                    }
-                    .show()
+                    }.show()
 
             } else {
                 // Directly ask for the permission
@@ -180,54 +177,50 @@ class MainActivity : AppCompatActivity() {
         val bytes = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
         val path = MediaStore.Images.Media.insertImage(
-            applicationContext.contentResolver,
-            bitmap,
-            "Image",
-            null
+            applicationContext.contentResolver, bitmap, "Image", null
         )
         return Uri.parse(path)
     }
 
-    private fun handleFileURIs(data : Intent?){
 
+    private fun handleFileURIs(data: Intent?) {
 
         if (data != null && data.data != null) {
 
-                Log.d("handleFileURIs" , "Single File Selected")
-                // File picker selected
-                val uri = data.data!!
-                uploadCallback?.onReceiveValue(arrayOf(uri))
-                uploadCallback = null
+            Log.d("handleFileURIs", "Single File Selected - Camera video")
+            // File picker selected
+            val uri = data.data!!
+            uploadCallback?.onReceiveValue(arrayOf(uri))
+            uploadCallback = null
 
         } else if (data?.clipData != null) {
 
-                Log.d("handleFileURIs" , "Multiple Files Selected")
-                // File picker selected (multiple files)
-                val uris = mutableListOf<Uri>()
-                for (i in 0 until data.clipData!!.itemCount) {
-                    val uri = data.clipData!!.getItemAt(i).uri
-                    uris.add(uri)
-                }
+            Log.d("handleFileURIs", "Multiple Files Selected")
+            // File picker selected (multiple files)
+            val uris = mutableListOf<Uri>()
+            for (i in 0 until data.clipData!!.itemCount) {
+                val uri = data.clipData!!.getItemAt(i).uri
+                uris.add(uri)
+            }
 
-                if (uris.isNotEmpty()) {
-                    uploadCallback?.onReceiveValue(uris.toTypedArray())
-                    uploadCallback = null
-                }
+            if (uris.isNotEmpty()) {
+                uploadCallback?.onReceiveValue(uris.toTypedArray())
+                uploadCallback = null
+            }
 
         } else if (data?.extras?.containsKey("data") == true) {
 
-                Log.d("handleFileURIs" , "Camera Photo Selected")
-                // Camera selected
-                // Handle camera capture
+            Log.d("handleFileURIs", "Camera Photo Selected")
+            // Camera selected
 
-                val imageBitmap = data.extras?.get("data") as Bitmap?
-                if (imageBitmap != null) {
-                    // Convert Bitmap to Uri
-                    val uri = bitmapToUri(imageBitmap)
-                    // Pass the Uri to the uploadCallback
-                    uploadCallback?.onReceiveValue(arrayOf(uri))
-                    uploadCallback = null
-                }
+            val imageBitmap = data.extras?.get("data") as Bitmap?
+            if (imageBitmap != null) {
+                // Convert Bitmap to Uri
+                val uri = bitmapToUri(imageBitmap)
+                // Pass the Uri to the uploadCallback
+                uploadCallback?.onReceiveValue(arrayOf(uri))
+                uploadCallback = null
+            }
 
         } else {
 
@@ -243,197 +236,220 @@ class MainActivity : AppCompatActivity() {
 
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
 
-               if (resultCode == Activity.RESULT_OK) {
+            when (resultCode) {
+                Activity.RESULT_OK -> {
+                    // Handle the result when the selection is successful
+                    Log.d("onActivityResult", "File chooser Result : Ok")
+                    handleFileURIs(data)
+                }
+                Activity.RESULT_CANCELED -> {
+                    // Handle the case when the user cancels the file selection
+                    Log.d("onActivityResult", "File chooser canceled")
+                }
+                else -> {
+                    // Handle other cases where the result might not be ok
+                    Log.d("onActivityResult", "File chooser result: Not ok")
+                }
+            }
+                // Reset filePathCallback here - so that second time onShowFileChooser can be called
+                uploadCallback?.onReceiveValue(null)
+                uploadCallback = null
 
-                        handleFileURIs(data)
+        } else if (requestCode == LOCATION_GPS_ENABLE_CODE) {  // handle result of GPS LOCATION
 
+                if (resultCode == Activity.RESULT_OK) {
+                    Log.d("OnActivityResult", "GPS Enable : Ok")
+                }
+
+        } else if (requestCode == REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) {
+
+                Log.d("onActivityResult", " Ignore Battery Optimization - resultcode  : $resultCode")
+
+                if (resultCode == Activity.RESULT_OK) {
+                    Log.d("onActivityResult", "get permission for ignore battery optimization")
                 } else {
-
-                   Log.d("onActivityResult" , "File Chooser : Result : Not Ok")
-                }
-
-
-        }else if(requestCode == LOCATION_GPS_ENABLE_CODE){  // handle result of GPS LOCATION
-//               Log.d("hello" ,"Location GPS : $resultCode")
-                if (resultCode == Activity.RESULT_OK){
-                        Log.d("neel OnActivityResult of GPS Result" , "After clicking Ok - Location is Enable")
-                }
-
-        }else if(requestCode == REQUEST_IGNORE_BATTERY_OPTIMIZATIONS){
-
-                Log.d("hello" , "resultcode  : $resultCode")
-
-                if(resultCode == Activity.RESULT_OK) {
-                    Log.d("hello", "get permission for ignore battery optimization")
-                }else{
-                    Log.d("hello" , "permission not granted for ignore battery optimization $resultCode")
+                    Log.d("onActivityResult", "permission not granted for ignore battery optimization $resultCode")
                 }
         }
     }
 
-    private fun chooseFileFromMedia(){
+    private fun chooseFileFromMedia() {
 
-        // Open file chooser or camera here
+        // Open file chooser, camera for image, and camera for video
         val fileIntent = Intent(Intent.ACTION_GET_CONTENT)
         fileIntent.addCategory(Intent.CATEGORY_OPENABLE)
         fileIntent.type = "*/*"
-        fileIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true)
+        fileIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
 
-        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        val cameraImageIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        val cameraVideoIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
+
+        val chooserIntent = Intent.createChooser(fileIntent, "Choose File")
+
+        // Add both camera intents to the chooser
+        chooserIntent.putExtra(
+            Intent.EXTRA_INITIAL_INTENTS, arrayOf(cameraImageIntent, cameraVideoIntent)
+        )
+
+        startActivityForResult(chooserIntent, FILE_CHOOSER_REQUEST_CODE)
+
+    }
+
+    private fun chooseFileFromMediaWithoutCameraPermission(){
+
+        // Open file chooser or gallery Here
+        val fileIntent = Intent(Intent.ACTION_GET_CONTENT)
+        fileIntent.addCategory(Intent.CATEGORY_OPENABLE)
+        fileIntent.type = "*/*"
+        fileIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+
+
+        val galleryIntent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+        galleryIntent.addCategory(Intent.CATEGORY_OPENABLE)
+        galleryIntent.type = "image/*"
+        galleryIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
 
 
         val chooserIntent = Intent.createChooser(fileIntent, "Choose File")
 
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(cameraIntent))
+        // Add both gallery Intent and File Intent
+        chooserIntent.putExtra(
+            Intent.EXTRA_INITIAL_INTENTS, arrayOf(galleryIntent)
+        )
 
-        startActivityForResult(chooserIntent, 101)
-
+        startActivityForResult(chooserIntent, FILE_CHOOSER_REQUEST_CODE)
 
     }
-
 
 
     //camera permission result
-    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()){
-            if(it){
-                Log.d("neel" , "CameraPermission Okk")
+    private val cameraPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            if (it) {
+                Log.d("cameraPermission ", "CameraPermission : Okk")
 
-                    chooseFileFromMedia()
+                chooseFileFromMedia()
 
-            }else{
+            } else {
 
-                // Open file chooser or camera here
-                val fileIntent = Intent(Intent.ACTION_GET_CONTENT)
-                fileIntent.addCategory(Intent.CATEGORY_OPENABLE)
-                fileIntent.type = "*/*"
-                fileIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true)
-
-
-                val chooserIntent = Intent.createChooser(fileIntent, "Choose File")
-                startActivityForResult(chooserIntent, 101)
-
+                Log.d("cameraPermission ", "CameraPermission :  No")
+                chooseFileFromMediaWithoutCameraPermission()
             }
-    }
+        }
 
     private fun checkCameraPermission() {
 
-        if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
+        if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+                // if camera Permission Not granted then launch the Camera Permission
+                cameraPermission.launch(Manifest.permission.CAMERA)
 
-                 cameraPermission.launch(Manifest.permission.CAMERA)
-        }else{
+        } else {
 
-            chooseFileFromMedia()
+               // Already Camera Permission Granted
+               chooseFileFromMedia()
         }
     }
 
 
-
     //background permission result
-    private val backgroundLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()){
-            if(it){
-                Log.d("neel" , "backgroundlocation")
+    private val backgroundLocation =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            if (it) {
+                Log.d("neel", "backgroundlocation")
 
                 // after user give permission for location check for GPS is active or not
                 requestDeviceLocationSettings()
 
-                service = Intent(this , LocationService::class.java).apply {
-                    putExtra("userId",userid)
-                    putExtra("companyId" , companyid)
-                    putExtra("androidId" , androidId)
+                service = Intent(this, LocationService::class.java).apply {
+                    putExtra("userId", userid)
+                    putExtra("companyId", companyid)
+                    putExtra("androidId", androidId)
                 }
                 service?.let { ContextCompat.startForegroundService(this, service!!) }
             }
-    }
+        }
 
     //location permission result
     @RequiresApi(Build.VERSION_CODES.Q)
     val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        when {
+          when {
 
             permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
                 // Precise location access granted.
-                Log.d("neel locationpermission" , "Fine")
-                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+                Log.d("locationpermission", "Precise Location : Granted")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
-                            if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                                != PackageManager.PERMISSION_GRANTED)  {
-                                backgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        if (ContextCompat.checkSelfPermission(
+                                this, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            backgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
 
-                            }
-                    }
+                        }
+                }
 
             }
 
             permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
                 // Only approximate location access granted.
 
-            } else -> {
-            // No location access granted.
-            Log.d("neel " , "locationpermission  :  Not Granted")
+            }
+
+            else -> {
+                // No location access granted.
+                Log.d("neel ", "locationpermission  :  Not Granted")
 //            Log.d("neel locationPermissionRequest", "called checkLocationPermission()")
 //            checkLocationPermission()
 
-        }
+            }
 
         }
     }
-    private fun checkLocationEnabled(context: Context) {
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val isLocationEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
 
-        if (!isLocationEnabled) {
-            // Location services are not enabled, request the user to enable them
-            Log.d("neel" ,"Location Service is not Enable")
-            requestDeviceLocationSettings()
-        } else {
-            // Location services are already enabled
-            Log.d("neel" ,"Location Service Enable")
-        }
-    }
 
-    private fun requestDeviceLocationSettings(){
+    private fun requestDeviceLocationSettings() {
         val locationRequest = LocationRequest.create().apply {
             interval = 10000
             fastestInterval = 5000
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
-        val builder = LocationSettingsRequest.Builder()
-            .addLocationRequest(locationRequest)
+        val builder = LocationSettingsRequest.Builder().addLocationRequest(locationRequest)
 
         val client: SettingsClient = LocationServices.getSettingsClient(this)
         val task: Task<LocationSettingsResponse> = client.checkLocationSettings(builder.build())
 
-        Log.d("neel" , "requestDeviceLocationSettings")
+        Log.d("neel", "requestDeviceLocationSettings")
 
         task.addOnSuccessListener { locationSettingsResponse ->
             // All location settings are satisfied. The client can initialize
             // location requests here.
-            Log.d("neel" , "GPS Enable")
+            Log.d("neel", "GPS Enable")
 
             val state = locationSettingsResponse.locationSettingsStates
 
-//            val label = "GPS >> (Present: ${state?.isGpsPresent}  | Usable: ${state?.isGpsUsable} ) \n" +
-//                        "Network >> ( Present: ${state?.isNetworkLocationPresent} | Usable: ${state?.isNetworkLocationUsable} ) \n" +
-//                        "Location >> ( Present: ${state?.isLocationPresent} | Usable: ${state?.isLocationUsable} )"
+            val label =
+                "GPS >> (Present: ${state?.isGpsPresent}  | Usable: ${state?.isGpsUsable} ) \n" +
+                        "Network >> ( Present: ${state?.isNetworkLocationPresent} | Usable: ${state?.isNetworkLocationUsable} ) \n" +
+                        "Location >> ( Present: ${state?.isLocationPresent} | Usable: ${state?.isLocationUsable} )"
 
 //            Log.d("neel" , label)
 
-            Toast.makeText(this@MainActivity,"LOCATION IS ACTIVE" , Toast.LENGTH_LONG).show()
+            Toast.makeText(this@MainActivity, "LOCATION IS ACTIVE", Toast.LENGTH_LONG).show()
         }
 
         task.addOnFailureListener { exception ->
             if (exception is ResolvableApiException) {
                 // Location settings are not satisfied, but this can be fixed
                 // by showing the user a dialog.
-                Log.d("neel" , "GPS Not Enable at time of opening the application")
+                Log.d("neel", "GPS Not Enable at time of opening the application")
                 try {
                     // Show the dialog by calling startResolutionForResult(),
                     // and check the result in onActivityResult().
                     exception.startResolutionForResult(
-                        this@MainActivity,
-                        LOCATION_GPS_ENABLE_CODE
+                        this@MainActivity, LOCATION_GPS_ENABLE_CODE
                     )
                 } catch (sendEx: IntentSender.SendIntentException) {
                     // Ignore the error.
@@ -449,84 +465,77 @@ class MainActivity : AppCompatActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+
+                Log.d("neel ", "CheckLocationPermission : Ok")
+
+                //after taking permission check the GPS is unable or not
+                requestDeviceLocationSettings()
+
+                if (ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                        )==PackageManager.PERMISSION_GRANTED
+                    ){
+
+                      service?.let { ContextCompat.startForegroundService(this, service!!) }
+                }
+
+                if (ContextCompat.checkSelfPermission(
+                        this, Manifest.permission.ACCESS_FINE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    locationPermissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
+                }
+
+
+            } else if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION) && shouldShowRequestPermissionRationale(
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
             ) {
 
-                    Log.d("neel ", "CheckLocationPermission : Ok")
+                Log.d("neel", "CheckLocationPermission  : shouldShowRequestPermissionRationale")
 
-                    //after taking permission check the GPS is unable or not
-//                    checkLocationEnabled(this)   --OR--
-                    requestDeviceLocationSettings()
+                val builder: AlertDialog.Builder = AlertDialog.Builder(this)
+                builder.setTitle("Location Settings")
+                builder.setMessage("Location services are disabled. Do you want to enable them?")
+                builder.setPositiveButton("Yes") { _, _ ->
 
-                    if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        == PackageManager.PERMISSION_GRANTED)  {
+                    locationPermissionRequest.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
+                builder.setNegativeButton("No") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                builder.show()
 
-                        service?.let { ContextCompat.startForegroundService(this, service!!) }
-                    }
-                    if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                        locationPermissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
-                    }
-
-
-            } else if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
-                 && shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION)) {
-
-                 Log.d("nee", "CheckLocationPermission  : shouldShowRequestPermissionRationale")
-
-                    val builder: AlertDialog.Builder = AlertDialog.Builder(this)
-                    builder.setTitle("Location Settings")
-                    builder.setMessage("Location services are disabled. Do you want to enable them?")
-                    builder.setPositiveButton("Yes") { _, _ ->
-
-                            locationPermissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION))
-                    }
-                    builder.setNegativeButton("No")  { dialog, _ ->
-                        dialog.dismiss()
-                    }
-                    builder.show()
 
             } else {
-                Log.d("neel", "CheckLocationPermission  : create launcher")
-                locationPermissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION))
+
+                    Log.d("neel", "CheckLocationPermission  : create launcher")
+                    locationPermissionRequest.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
 
             }
 
         }
     }
 
-
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "onResume :  OK")
-
-    }
-
-
-    private fun uploadFile(fileUris: Array<Uri>?) {
-        // Perform the file upload logic here
-        // You can use the file URIs to handle the selected file(s)
-
-        // For example, you might want to display the file name(s)
-
-        fileUris?.forEach { uri ->
-            val fileName = uri.lastPathSegment
-            Log.d("neel", "Value of fileUris is : $fileName")
-
-            // Process the file name as needed
-        }
-
-        // Once the upload is complete, provide the result to the WebView
-        if (uploadCallback != null) {
-            uploadCallback?.onReceiveValue(fileUris)
-            uploadCallback = null
-        }
-        else{
-            Log.d("Value check for uploadCallBack","No value")
-        }
+        Log.d("onResume", "onResume :  OK")
 
     }
 
@@ -543,17 +552,14 @@ class MainActivity : AppCompatActivity() {
             webView.evaluateJavascript(
                 "(function() { return localStorage.getItem('company-id'); })();"
             ) { companyIdValue ->
-                companyid = companyIdValue.substring(1,companyIdValue.length-1)
+                companyid = companyIdValue.substring(1, companyIdValue.length - 1)
                 Log.d("LocalStorage values", "company-id : $companyid")
 
                 webView.evaluateJavascript(
                     "(function() { return localStorage.getItem('access-token'); })();"
                 ) { accessTokenValue ->
-//                    Log.d("neel" , "accesstoken : $accessTokenValue")
-                    accesstoken = accessTokenValue.substring(1,accessTokenValue.length-1)
-                    Log.d("neel", "access-token : $accesstoken")
-
-
+                    accesstoken = accessTokenValue.substring(1, accessTokenValue.length - 1)
+                    Log.d("LocalStorage values", "access-token : $accesstoken")
 
 //                    // After all variables are initialized, call apiRequestToServer()
 //                    Handler().postDelayed({
@@ -561,15 +567,15 @@ class MainActivity : AppCompatActivity() {
 //                    }, 20000)
 //                    apiRequestToServer()
 
-                    Log.d("Neel", "accesslocalstorage")
-                    Log.d("Neel ", "access-Token  : $accesstoken")
+                    Log.d("neel", "accesslocalstorage")
+                    Log.d("neel ", "access-Token  : $accesstoken")
 
 
                     // before login the variable value is NULL so after login it is called and if all set then askNotification Permission
-                    if(userid != "ul") {
-                        Log.d("Neel ----", "ok")
+                    if (userid != "ul") {
+                        Log.d("neel", "userid != ul")
 
-                            askNotificationPermission()
+                        askNotificationPermission()
 
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
@@ -584,6 +590,42 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    private fun apiResponseFromServer() {
+
+        val requestCall = RetrofitInstance.apiInterface2.getIsCacheCleared()
+
+        requestCall.enqueue(object : Callback<List<responseDataModelItem>> {
+            override fun onResponse(
+                call: Call<List<responseDataModelItem>>,
+                response: Response<List<responseDataModelItem>>
+            ) {
+                try {
+                    if (response.isSuccessful) {
+                        val responseData = response.body()
+                        // Process responseData according to your application's logic
+                        Log.d("apiResponseFromServer", "Success! Response Data: $responseData")
+                        Log.d("apiResponseFromServer", "Success! Response Code: ${response}")
+                    } else {
+                        // Handle unsuccessful response (e.g., non-200 status code)
+                        Log.e("apiResponseFromServer", "Unsuccessful response: ${response.code()}")
+                    }
+
+
+                } catch (e: Exception) {
+                    Log.e("apiResponseFromServer", "Error: ${e.message}", e)
+                }
+            }
+
+            override fun onFailure(call: Call<List<responseDataModelItem>>, t: Throwable) {
+                Log.d("apiResponseFromServer", "onFailure")
+                //                if (t is HttpException) {
+                Log.d("apiResponseFromServer", "HTTP Status Code: $t")
+                //                }
+            }
+
+        })
+
+    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun apiRequestToServer() {
@@ -596,51 +638,48 @@ class MainActivity : AppCompatActivity() {
         webView.evaluateJavascript(
             "(function() { return localStorage.getItem('access-token'); })();"
         ) { accessTokenValue ->
-//                    Log.d("neel" , "accesstoken : $accessTokenValue")
             accesstoken = accessTokenValue.substring(1, accessTokenValue.length - 1)
             Log.d("neel", "access-token : $accesstoken")
 
 
-
-
-                val userData = dataModelItem(registrationToken, "FCM")
-                RetrofitInstance.apiInterface.sendToken(userid, companyid, accesstoken, userData)
-                    .enqueue(object :
-                        retrofit2.Callback<dataModelItem?> {
-                        override fun onResponse(
-                            call: Call<dataModelItem?>,
-                            response: Response<dataModelItem?>
-                        ) {
-                            try {
-                                if (response.isSuccessful) {
-                                    val responseData = response.body()
-                                    // Process responseData according to your application's logic
-                                    Log.d("MainActivity POST", "Success! Response Data: $responseData")
-                                    Log.d("MainActivity POST", "Success! Response Code: ${response}")
-                                } else {
-                                    // Handle unsuccessful response (e.g., non-200 status code)
-                                    Log.e("MainActivity POST", "Unsuccessful response: ${response.code()}")
-                                }
-
-
-                            } catch (e: Exception) {
-                                Log.e("MainActivity POST", "Error: ${e.message}", e)
+            val userData = dataModelItem(registrationToken, "FCM")
+            RetrofitInstance.apiInterface.sendToken(userid, companyid, accesstoken, userData)
+                .enqueue(object : retrofit2.Callback<dataModelItem?> {
+                    override fun onResponse(
+                        call: Call<dataModelItem?>, response: Response<dataModelItem?>
+                    ) {
+                        try {
+                            if (response.isSuccessful) {
+                                val responseData = response.body()
+                                // Process responseData according to your application's logic
+                                Log.d("MainActivity POST", "Success! Response Data: $responseData")
+                                Log.d("MainActivity POST", "Success! Response Code: ${response}")
+                            } else {
+                                // Handle unsuccessful response (e.g., non-200 status code)
+                                Log.e(
+                                    "MainActivity POST", "Unsuccessful response: ${response.code()}"
+                                )
                             }
 
+
+                        } catch (e: Exception) {
+                            Log.e("MainActivity POST", "Error: ${e.message}", e)
                         }
 
-                        override fun onFailure(call: Call<dataModelItem?>, t: Throwable) {
+                    }
 
-                            Log.d("MainActivity POST", "onFailure")
-        //                if (t is HttpException) {
-                            Log.d("MainActivity POST", "HTTP Status Code: $t")
-        //                }
-                        }
+                    override fun onFailure(call: Call<dataModelItem?>, t: Throwable) {
+
+                        Log.d("MainActivity POST", "onFailure")
+                        //                if (t is HttpException) {
+                        Log.d("MainActivity POST", "HTTP Status Code: $t")
+                        //                }
+                    }
 
 
-                    })
+                })
 
-    }
+        }
 
     }
 
@@ -656,26 +695,50 @@ class MainActivity : AppCompatActivity() {
         return powerManager.isIgnoringBatteryOptimizations(packageName)
     }
 
-//    private val Ignore_Battery_Optimization = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-//        if(it){
-//            Log.d("hello" , "Ignore_Battery_Optimization")
-//        }
-//    }
-//
-//
     @SuppressLint("BatteryLife")
     private fun requestBatteryOptimizations() {
-        Log.d("hello","ask for permisssion")
-//        Ignore_Battery_Optimization.launch(Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-//
-            val packageName = applicationContext.packageName
-            val intent = Intent()
-            intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-            intent.setData(Uri.parse("package:$packageName"))
-            startActivityForResult(intent, REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+
+        Log.d("hello", "ask for requestBatteryOptimization")
+        val packageName = applicationContext.packageName
+        val intent = Intent()
+        intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+        intent.setData(Uri.parse("package:$packageName"))
+        startActivityForResult(intent, REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
 
 
-}
+    }
+
+
+    fun clearApplicationData() {
+
+        val cache = cacheDir               // /data/user/0/pro.zentrades.android/cache
+        val appDir = File(cache.parent)   // /data/user/0/pro.zentrades.android
+
+        if (appDir.exists()) {
+            val children = appDir.list()
+//            Log.d("neel","children : $children")
+            for (s in children!!) {
+                if (s != "lib") {
+                    deleteDir(File(appDir, s))
+                    Log.i("neel", "File /data/data/APP_PACKAGE/$s DELETED")
+                }
+            }
+        }
+    }
+
+    fun deleteDir(dir: File?): Boolean {
+        if (dir != null && dir.isDirectory) {
+            val children = dir.list()
+            for (i in children.indices) {
+                val success = deleteDir(File(dir, children[i]))
+                if (!success) {
+                    return false
+                }
+            }
+        }
+        return dir!!.delete()
+    }
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("SetJavaScriptEnabled", "MissingInflatedId")
@@ -685,6 +748,10 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen()
 
         super.onCreate(savedInstanceState)
+
+//        clearApplicationData()     //clean the app data- files , cache , database
+
+//        apiResponseFromServer()    get Response from server for CacheClear or not
 
 
         // Check if the app is not already exempted from battery optimizations
@@ -696,7 +763,8 @@ class MainActivity : AppCompatActivity() {
 
 
         androidId = getAndroidId(applicationContext)
-        d("neel" , "Device Id : $androidId")
+        d("neel", "Device Id : $androidId")
+
 
         // Check if the activity was started by tapping on a notification
         if (intent != null && intent.extras != null) {
@@ -715,13 +783,8 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
-
-//        val overlayLayout = findViewById<FrameLayout>(R.id.overlayLayout)
-        webView= findViewById(R.id.webView)
+        webView = findViewById(R.id.webView)
         webView.loadUrl("https://mobile.zentrades.pro/")
-
-
-//        progressBar = findViewById(R.id.progressBar)
 
 
         webView.settings.javaScriptEnabled = true
@@ -731,28 +794,20 @@ class MainActivity : AppCompatActivity() {
 //        webView.settings.userAgentString = "YourUserAgentString"
 
 
-
-        // Check and request location permission if needed
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//            checkLocationPermission()
-//        }
-
-
-        webView.webViewClient = object : WebViewClient(){
+        webView.webViewClient = object : WebViewClient() {
 
 
             @SuppressLint("QueryPermissionsNeeded")
             override fun shouldOverrideUrlLoading(
-                view: WebView?,
-                request: WebResourceRequest?
+                view: WebView?, request: WebResourceRequest?
             ): Boolean {
 
                 val newUrl = request?.url.toString()
-                d("Override URL : ","override URL is $newUrl")
+                d("Override URL : ", "override URL is $newUrl")
 
 
-                if(isGoogleMapsUrl(newUrl)) {
-                    d("Override URL : ","google map url")
+                if (isGoogleMapsUrl(newUrl)) {
+                    d("Override URL : ", "google map url")
                     // Handle Google Maps URL
                     val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(newUrl))
                     mapIntent.setPackage("com.google.android.apps.maps") // Specify the package to ensure it opens in Google Maps
@@ -762,61 +817,50 @@ class MainActivity : AppCompatActivity() {
 
 
 
-                if(newUrl.contains("mailto:") || newUrl.contains("sms:") || newUrl.contains("tel:")){
+                if (newUrl.contains("mailto:") || newUrl.contains("sms:") || newUrl.contains("tel:")) {
 
-                    val mailIntent = Intent(Intent.ACTION_VIEW , Uri.parse(newUrl))
+                    val mailIntent = Intent(Intent.ACTION_VIEW, Uri.parse(newUrl))
                     startActivity((mailIntent))
-                    return true ;
+                    return true
                 }
 
 
 
-                if(newUrl.contains(".pdf")) {
-                    d(TAG, "Override Downloaded file URL is $newUrl")
-//                  val downloadIntent = Intent(Intent.ACTION_VIEW , Uri.parse(newUrl))          //Using intent
-//                  startActivity((downloadIntent))
+                if (newUrl.contains(".pdf")) {
+                    d("Override", "Override Downloaded file URL is $newUrl")
                     view?.loadUrl(newUrl)           //load the url and auto call to setDownloadListener  for downloading file
                     return true
                 }
 
 
-
-                val desiredPattern = "^https://mobile\\.zentrades\\.pro/.*$"                // check URL at the time of logout and then redirect to login page
+                val desiredPattern = "^https://mobile\\.zentrades\\.pro/.*$"               // check URL at the time of logout and then redirect to login page
                 val urlToCheck = newUrl
 
-                if (isMatchingUrl(urlToCheck, desiredPattern)){
+                if (isMatchingUrl(urlToCheck, desiredPattern)) {
 
 //                    view?.loadUrl(newUrl)
+                    Log.d("override" , "URL Loaded : https://mobile.zentrades.pro/")
                     return false  // return false to load the url
                 }
 
 
 
-                if(newUrl.contains(".png")) {
-                    d(TAG, "Override Image  URL is $newUrl")
+                if (newUrl.contains(".png")) {
+                    d("override", "Override Image  URL is $newUrl")
                     view?.loadUrl(newUrl)
                     return true
                 }
 
 
-                if(!completely_loaded) redirect = true
-                completely_loaded = false
-                return true
+                return false  // load the URL
             }
 
-            fun isMatchingUrl(url: String, pattern: String): Boolean {
-                val regex = Pattern.compile(pattern)
-                val matcher = regex.matcher(url)
-                return matcher.matches()
-            }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
 
-                d("Neel", "page-started $url")
+                d("neel", "page-started $url")
 
-                completely_loaded = false
-                d(TAG, "completely_loaded : $completely_loaded")
                 d("onPageStarted : ", "Value of url(onPage-started) is $url")
 
 //                progressBar.visibility = View.VISIBLE
@@ -826,40 +870,15 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
-
-                webView.loadUrl("javascript:(function() { " +
-                        "console.log('NEEL PATEL Here'); " +
-                        "var data = window.localStorage.getItem('user-id');" +
-                        "console.log('user-id is : '+data); })()")
+                Log.d("onPageFinished", "ok")
 
 
-                d("onPageFinished", "ok")
+                Log.d("neel", "page-finished $url")
 
-
-                d("Neel", "page-finished $url") // take the values from the local storage after page is loaded
+                // take the values from the local storage after page is loaded
                 accessLocalStorage(webView)
 
-
-
-
-                if(!redirect) completely_loaded = true
-
-                if(completely_loaded && !redirect){
-
-                    d(TAG, "completely_loaded : $completely_loaded")
-
-                }else redirect = false
-
             }
-
-            override fun onPageCommitVisible(view: WebView?, url: String?) {
-                super.onPageCommitVisible(view, url)
-                // Your code here
-                d("onPageCommitVisible", "$url")
-//                progressBar.visibility = View.GONE
-
-            }
-
 
 
         }
@@ -887,7 +906,6 @@ class MainActivity : AppCompatActivity() {
             }
 
 
-
 //            override fun onProgressChanged(view: WebView?, newProgress: Int) {
 //                super.onProgressChanged(view, newProgress)
 //
@@ -913,14 +931,28 @@ class MainActivity : AppCompatActivity() {
                 fileChooserParams: FileChooserParams?
             ): Boolean {
 
-                Log.d("neel" ,"onShowFileChooser")
+                fileChooserParams?.let { params ->
+                    // Retrieve accepted mime types
+                    val acceptTypes = params.acceptTypes
+                    Log.d("fileChooserParams", "accept file : $acceptTypes")
 
+                    if (acceptTypes != null) {
+                        // Convert the array of MIME types to a string representation
+                        val acceptTypesString = acceptTypes.joinToString(", ")
+                        // Now, you can use acceptTypesString as needed
+                        Log.d("fileChooserParams", "Accepted MIME types: $acceptTypesString")
+                    } else {
+                        Log.d("fileChooserParams", "No accepted MIME types specified")
+                    }
+
+                }
+
+                Log.d("neel", "onShowFileChooser")
                 checkCameraPermission()   // take permission for camera access
 
 
-                d("Value of result is", "neel")
                 uploadCallback = filePathCallback
-                d("Value of upload-callback is",uploadCallback.toString())
+                d("Value of upload-callback is", uploadCallback.toString())
 
 
                 return true
@@ -931,12 +963,15 @@ class MainActivity : AppCompatActivity() {
 
 
         webView.setDownloadListener(object : DownloadListener {
-            override fun onDownloadStart(url: String?, userAgent: String?, contentDisposition: String?, mimeType: String?, contentLength: Long) {
+            override fun onDownloadStart(
+                url: String?,
+                userAgent: String?,
+                contentDisposition: String?,
+                mimeType: String?,
+                contentLength: Long
+            ) {
                 // Your implementation here
-                d("Download File","Downloaded file URL is $url")
-//                val downloadIntent = Intent(Intent.ACTION_VIEW , Uri.parse(url))          //Using intent
-//                startActivity((downloadIntent))
-//                return
+                d("Download File", "Downloaded file URL is $url")
 
 
                 // Create a DownloadManager request
@@ -976,41 +1011,16 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-
-//    @Deprecated("Deprecated in Java")
-//    override fun onBackPressed() {
-//        // Check if there's a page to go back to in the WebView
-//        if (webView.canGoBack()) {
-//            // Go back in WebView history
-//            webView.goBack()
-//        } else {
-////            // If no page to go back, let the system handle the back press
-//            val builder = AlertDialog.Builder(this)
-//            builder.setTitle("Close Application")
-//            builder.setMessage("Do you want to close the application?")
-//            builder.setPositiveButton("Yes") { _, _ ->
-//                // Perform close actions here
-//                super.onBackPressed()
-//            }
-//            builder.setNegativeButton("No") { _, _ ->
-//                // Continue with the application
-//            }
-//            builder.show()
-//
-//
-//        }
-//    }
-
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
 
         // Check whether the key event is the Back button and if there's history.
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
             webView.goBack()
             return true
-        }else {
+        } else {
             // If it isn't the Back button or there isn't web page history, bubble up to
             // the default system behavior. Probably exit the activity.
-//           return super.onKeyDown(keyCode, event)
+            // return super.onKeyDown(keyCode, event)
 
             // If no page to go back, let the system handle the back press
             val builder = AlertDialog.Builder(this)
@@ -1019,11 +1029,12 @@ class MainActivity : AppCompatActivity() {
             builder.setPositiveButton("Yes") { _, _ ->
                 // Perform close actions here
                 super.onBackPressed()
-//                 super.onKeyDown(keyCode, event)
+                //super.onKeyDown(keyCode, event)
             }
             builder.setNegativeButton("No") { _, _ ->
                 // Continue with the application
             }
+
             builder.show()
         }
 
@@ -1034,6 +1045,12 @@ class MainActivity : AppCompatActivity() {
     private fun isGoogleMapsUrl(url: String): Boolean {
         // Check if the URL starts with "https://maps.google.com/maps" and contains "daddr=" indicating destination coordinates
         return url.startsWith("https://maps.google.com/maps") && url.contains("daddr=")
+    }
+
+    fun isMatchingUrl(url: String, pattern: String): Boolean {
+        val regex = Pattern.compile(pattern)
+        val matcher = regex.matcher(url)
+        return matcher.matches()
     }
 
     override fun onDestroy() {

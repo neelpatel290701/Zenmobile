@@ -36,11 +36,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     }
 
-//    override fun handleIntent(intent: Intent?) {
-//        super.handleIntent(intent)
-//
-//        Log.d("Firebase handle-intent", "MyFirebaseMessagingService....")
-//    }
 
 
     override fun onNewToken(token: String) {
@@ -49,7 +44,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // If you want to send messages to this application instance or
         // manage this apps subscriptions on the server side, send the
         // FCM registration token to your app server.
-//        sendRegistrationToServer(token)
     }
 
 
