@@ -122,7 +122,7 @@ class LocationService : Service() {
                     Log.d("neel", "userId : $userID and companyId : $companyID")
                     Log.d("neel", "Distance-meter diff  is : $distance_meter \n\n")
 
-                    if (distance_meter > 5) {
+                    if (distance_meter > 3) {
 
                         Total_distance += (distance_meter)
 

@@ -1,0 +1,35 @@
+package pro.zentrades.android
+
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
+
+object DataHolder {
+
+    private const val ACCESS_TOKEN_KEY = "access_token"
+
+    // Initialize SharedPreferences
+    private val sharedPreferences: SharedPreferences by lazy {
+        // Use applicationContext to prevent memory leaks
+        ApplicationClass.context.getSharedPreferences("my_app_prefs", Context.MODE_PRIVATE)
+    }
+
+    fun initialize(context: Context) {
+        ApplicationClass.context = context.applicationContext
+    }
+
+    // Getter and setter for accessToken
+    var accessToken: String?
+        get() = sharedPreferences.getString(ACCESS_TOKEN_KEY, null)
+        set(value) {
+            // Save the token to SharedPreferences
+            sharedPreferences.edit().putString(ACCESS_TOKEN_KEY, value).apply()
+        }
+
+    var userId: String = ""
+    var companyId: String = ""
+    var registrationToken: String? = null
+    var androidId: String = ""
+//    var accessToken: String? = null
+    var service: Intent? = null
+}
