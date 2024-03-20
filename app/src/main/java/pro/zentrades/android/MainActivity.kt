@@ -1,15 +1,12 @@
 package pro.zentrades.android
 
 import PermissionChecker
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
-import android.content.IntentSender
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -30,21 +27,12 @@ import android.webkit.WebSettings.*
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.google.android.gms.common.api.ResolvableApiException
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.LocationSettingsRequest
-import com.google.android.gms.location.LocationSettingsResponse
-import com.google.android.gms.location.SettingsClient
-import com.google.android.gms.tasks.OnCompleteListener
-import com.google.android.gms.tasks.Task
-import com.google.firebase.messaging.FirebaseMessaging
+import org.json.JSONException
+import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -56,51 +44,47 @@ import java.util.regex.Pattern
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() , PermissionCallback{
 
-
     private lateinit var webView: WebView
-    private var uploadCallback: ValueCallback<Array<Uri>>? = null
+    private var uploadCallback: ValueCallback<Array<Uri>>? = null   // Using for onShowFileChooser
+
+    // Initialize PermissionChecker
+    val permissionChecker = PermissionChecker(this, this)
 
     companion object {
         const val LOCATION_GPS_ENABLE_CODE = 1001
         const val REQUEST_IGNORE_BATTERY_OPTIMIZATIONS = 2010
         const val FILE_CHOOSER_REQUEST_CODE = 101
-        const val SCRIPT_GET_LOCAL_DATA = "(function() { return localStorage.getItem('user-id'); })();"
+//        const val SCRIPT_GET_LOCAL_DATA = "(function() { return localStorage.getItem('user-id'); })();"
     }
 
+    private fun handleFileChooserResultCode(resultCode: Int ,data: Intent?){
 
-    // Initialize PermissionChecker
-    val permissionChecker = PermissionChecker(this, this)
+        when (resultCode) {
+            Activity.RESULT_OK -> {
+                Log.d("onActivityResult", "File chooser Result : Ok")
+                handleFileURIs(data)
+            }
+            Activity.RESULT_CANCELED -> {
+                Log.d("onActivityResult", "File chooser canceled")
+            }
+            else -> {
+                // Handle other cases where the result might not be ok
+                Log.d("onActivityResult", "File chooser result: Not ok")
+            }
+        }
+        // Reset filePathCallback here - so that second time onShowFileChooser can be called
+        uploadCallback?.onReceiveValue(null)
+        uploadCallback = null
 
-
+    }
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
-
-            when (resultCode) {
-                Activity.RESULT_OK -> {
-                    // Handle the result when the selection is successful
-                    Log.d("onActivityResult", "File chooser Result : Ok")
-                    handleFileURIs(data)
-                }
-                Activity.RESULT_CANCELED -> {
-                    // Handle the case when the user cancels the file selection
-                    Log.d("onActivityResult", "File chooser canceled")
-                }
-                else -> {
-                    // Handle other cases where the result might not be ok
-                    Log.d("onActivityResult", "File chooser result: Not ok")
-                }
-            }
-                // Reset filePathCallback here - so that second time onShowFileChooser can be called
-                uploadCallback?.onReceiveValue(null)
-                uploadCallback = null
-
-
-        } else if (requestCode == LOCATION_GPS_ENABLE_CODE) {  // handle result of GPS LOCATION
-
+                handleFileChooserResultCode(resultCode , data)
+        } else if (requestCode == LOCATION_GPS_ENABLE_CODE) {
                 if (resultCode == Activity.RESULT_OK) {
                     Log.d("OnActivityResult", "GPS Enable : Ok")
                 }
@@ -195,61 +179,58 @@ class MainActivity : AppCompatActivity() , PermissionCallback{
     }
 
 
-    // access local storage values : user-id , company-id , access-token
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun accessLocalStorage(webView: WebView) {
+//     access local storage values : user-id , company-id , access-token
+     @SuppressLint("SuspiciousIndentation")
+     @RequiresApi(Build.VERSION_CODES.O)
+    private fun accessLocalStorage(webView: WebView){
 
         webView.evaluateJavascript(
-            SCRIPT_GET_LOCAL_DATA
-        ) { userIdValue ->
-            DataHolder.userId = userIdValue.substring(1, userIdValue.length - 1)
-            Log.d("LocalStorage values", "user-id : ${DataHolder.userId}")
-
-            webView.evaluateJavascript(
-                "(function() { return localStorage.getItem('company-id'); })();"
-            ) { companyIdValue ->
-                DataHolder.companyId = companyIdValue.substring(1, companyIdValue.length - 1)
-                Log.d("LocalStorage values", "company-id : ${DataHolder.companyId}")
-
-                webView.evaluateJavascript(
-                    "(function() { return localStorage.getItem('access-token'); })();"
-                ) { TempAccessTokenValue ->
-//                    Log.d("neel ", "access-Token Initial : ${DataHolder.accessToken }")
-//                    Log.d("neel", "access-token direct : ${TempAccessTokenValue}")
-//                    if(TempAccessTokenValue != "null") {
-//                        DataHolder.accessToken = TempAccessTokenValue.substring(1, TempAccessTokenValue.length - 1)
-//                        Log.d("neel", "innnnnn")
-//                    }
-//                    Log.d("neel", "access-token : ${DataHolder.accessToken }")
-
-//                    Log.d("neel", "accesslocalstorage")
-
-                    if(TempAccessTokenValue != "null"){
-
-                            var tempAT : String = TempAccessTokenValue.substring(1, TempAccessTokenValue.length - 1)
-
-                            if(DataHolder.accessToken == null || DataHolder.accessToken == tempAT){
-
-                                DataHolder.accessToken = TempAccessTokenValue.substring(1, TempAccessTokenValue.length - 1)
-                                Log.d("neel", "access-token is null :  ${DataHolder.accessToken}")
-                                Log.d("neel", "both access token same")
-
-                                permissionChecker.askNotificationPermission()
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    permissionChecker.checkLocationPermission()
-                                }
+            """
+        (function() {
+            var userId = localStorage.getItem('user-id');
+            var companyId = localStorage.getItem('company-id');
+            var accessToken = localStorage.getItem('access-token');
+            return JSON.stringify({userId: userId, companyId: companyId, accessToken: accessToken});
+        })();
+        """
+        ) { jsonString ->
+                try {
+                      val cleanedJsonString = jsonString.replace("\\", "")
+                      val finalJSON = cleanedJsonString.substring(1, cleanedJsonString.length - 1)
+                      val dataObject = JSONObject(finalJSON)
+                      DataHolder.userId  = dataObject.getString("userId")
+                      DataHolder.companyId = dataObject.getString("companyId")
+                      val currAccessToken = dataObject.getString("accessToken")
 
 
-                            }else if(DataHolder.accessToken != tempAT){
+                     Log.d("neel" , "curr-access-token : ${currAccessToken}")
 
-                                Log.d("neel", "both access token Not -same")
-                                DataHolder.accessToken = tempAT
-                                permissionChecker.askNotificationPermissionOnNewAccessToken()
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    permissionChecker.checkLocationPermission()
-                                }
 
+
+                    if(currAccessToken != "null"){
+
+
+                        if(DataHolder.accessToken == null || DataHolder.accessToken == currAccessToken){
+
+                            DataHolder.accessToken = currAccessToken
+                            Log.d("neel", "both access token same OR Null")
+
+                            permissionChecker.askNotificationPermission()
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                permissionChecker.checkLocationPermission()
                             }
+
+
+                        }else if(DataHolder.accessToken != currAccessToken){
+
+                            Log.d("neel", "both access token Not -same : ${DataHolder.accessToken}")
+                            DataHolder.accessToken = currAccessToken
+                            permissionChecker.askNotificationPermissionOnNewAccessToken()
+//                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                                permissionChecker.checkLocationPermission()
+//                            }
+
+                        }
                     }else{
 
                         val isForegroundServiceRunning = isForegroundServiceRunning(this, LocationService::class.java)
@@ -263,11 +244,78 @@ class MainActivity : AppCompatActivity() , PermissionCallback{
                         }
                     }
 
-
+                }catch (e: JSONException){
+                    Log.e("neel", "Error parsing JSON: ${e.message}")
                 }
-            }
         }
     }
+
+
+
+////
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    private fun accessLocalStorage(webView: WebView) {
+//        webView.evaluateJavascript(
+//            "(function() { return localStorage.getItem('user-id'); })();"
+//        ) { userIdValue ->
+//            DataHolder.userId = userIdValue.substring(1, userIdValue.length - 1)
+//            Log.d("LocalStorage values", "user-id : ${DataHolder.userId}")
+//
+//            webView.evaluateJavascript(
+//                "(function() { return localStorage.getItem('company-id'); })();"
+//            ) { companyIdValue ->
+//                DataHolder.companyId = companyIdValue.substring(1, companyIdValue.length - 1)
+//                Log.d("LocalStorage values", "company-id : ${DataHolder.companyId}")
+//
+//                webView.evaluateJavascript(
+//                    "(function() { return localStorage.getItem('access-token'); })();"
+//                ) { TempAccessTokenValue ->
+//
+//                    if(TempAccessTokenValue != "null"){
+//
+//                            var tempAT : String = TempAccessTokenValue.substring(1, TempAccessTokenValue.length - 1)
+//
+//                            if(DataHolder.accessToken == null || DataHolder.accessToken == tempAT){
+//
+//                                DataHolder.accessToken = TempAccessTokenValue.substring(1, TempAccessTokenValue.length - 1)
+//                                Log.d("neel", "access-token is null :  ${DataHolder.accessToken}")
+//                                Log.d("neel", "both access token same")
+//
+//                                permissionChecker.askNotificationPermission()
+//                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                                    permissionChecker.checkLocationPermission()
+//                                }
+//
+//
+//                            }else if(DataHolder.accessToken != tempAT){
+//
+//                                Log.d("neel", "both access token Not -same")
+//                                DataHolder.accessToken = tempAT
+//                                Log.d("neel" , "Access-Token : ${DataHolder.accessToken}")
+//                                permissionChecker.askNotificationPermissionOnNewAccessToken()
+//                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                                    permissionChecker.checkLocationPermission()
+//                                }
+//
+//                            }
+//                    }else{
+//
+//                        val isForegroundServiceRunning = isForegroundServiceRunning(this, LocationService::class.java)
+//                        if (isForegroundServiceRunning) {
+//                            // Foreground service is running
+//                            Log.d("neel" , "Service is running and then stop it")
+//                            stopService(DataHolder.service)
+//                        } else {
+//                            // Foreground service is not running
+//                            Log.d("neel" , "Service is not running")
+//                        }
+//                    }
+//
+//
+//                }
+//            }
+//        }
+//    }
 
 
     private fun apiResponseFromServer() {

@@ -8,10 +8,10 @@ import retrofit2.http.POST
 
 interface ApiInterface {
 
-    @GET("/posts")
+    @GET("posts")
     fun getIsCacheCleared() : Call<List<responseDataModelItem>>
 
-    @POST("/notification/token")
+    @POST("token")
     fun sendToken(
         @Header("user-id") userId : String  ,
         @Header("company-id") companyId : String ,

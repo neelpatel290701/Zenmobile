@@ -88,18 +88,23 @@ object Helperfunction {
 
 
         Log.d("apiRequestToServer","OKK" )
-        Log.d("Neel", "api-request ${DataHolder.userId}")
 
 
         webView.evaluateJavascript(
             "(function() { return localStorage.getItem('access-token'); })();"
         ) { accessTokenValue ->
             DataHolder.accessToken = accessTokenValue.substring(1, accessTokenValue.length - 1)
-            Log.d("neel", "access-token : ${DataHolder.accessToken }")
+            Log.d("neel", "access-token : ${DataHolder.accessToken}")
 
+            try{
 
             val userData = dataModelItem(DataHolder.registrationToken!!, "FCM")
-            RetrofitInstance.apiInterface.sendToken(DataHolder.userId, DataHolder.companyId,DataHolder.accessToken!!, userData)
+            RetrofitInstance.apiInterface.sendToken(
+                DataHolder.userId,
+                DataHolder.companyId,
+                DataHolder.accessToken!!,
+                userData
+            )
                 .enqueue(object : Callback<dataModelItem?> {
                     override fun onResponse(
                         call: Call<dataModelItem?>, response: Response<dataModelItem?>
@@ -113,7 +118,8 @@ object Helperfunction {
                             } else {
                                 // Handle unsuccessful response (e.g., non-200 status code)
                                 Log.e(
-                                    "apiRequestToServer", "Unsuccessful response: ${response.code()}"
+                                    "apiRequestToServer",
+                                    "Unsuccessful response: ${response.code()}"
                                 )
                             }
 
@@ -134,6 +140,12 @@ object Helperfunction {
 
 
                 })
+
+        }catch (e : Exception){
+
+                Log.d("neel" , "${e.message}")
+        }
+
 
         }
 
