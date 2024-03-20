@@ -242,6 +242,20 @@ class PermissionChecker(
         }
 
 
+    @RequiresApi(Build.VERSION_CODES.Q)
+    fun askForPreciseLocation(){
+
+        if (ContextCompat.checkSelfPermission(
+                activity, Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            locationPermissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
+        }
+
+
+    }
+
+
 
     //location permission result
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -252,7 +266,7 @@ class PermissionChecker(
 
             permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
                 // Precise location access granted.
-                Log.d("locationpermission", "Precise Location : Granted")
+                Log.d("location-permission", "Precise Location : Granted")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
                     if (ContextCompat.checkSelfPermission(
@@ -268,14 +282,17 @@ class PermissionChecker(
 
             permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
                 // Only approximate location access granted.
+                Log.d("nee location-permission", "Approximate Location : Granted")
+
+               askForPreciseLocation()   /// ask for Precise Location to user
+
 
             }
 
             else -> {
                 // No location access granted.
-                Log.d("neel ", "locationpermission  :  Not Granted")
-//            Log.d("neel locationPermissionRequest", "called checkLocationPermission()")
-//            checkLocationPermission()
+                Log.d("neel ", "location-permission  :  Not Granted")
+
 
             }
 

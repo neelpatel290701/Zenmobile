@@ -8,8 +8,9 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitInstance {
 
-    private const val BASE_URL = "https://services-stage.smartserv.io/api/notification/"
-    private const val BASE_URL2 = "https://jsonplaceholder.typicode.com/"
+    private const val BASE_URL = "https://services-stage.smartserv.io/api"
+
+    private const val BASE_URL2 = "https://jsonplaceholder.typicode.com"
 
     //create logger
     private val logger = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)

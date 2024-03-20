@@ -8,7 +8,8 @@ object DataHolder {
 
     private const val ACCESS_TOKEN_KEY = "access_token"
 
-    // Initialize SharedPreferences
+    // Initialize SharedPreferences  ---- here used sharepreference for access-token so that store
+    // the value of it and second time app opening can be get it.
     private val sharedPreferences: SharedPreferences by lazy {
         // Use applicationContext to prevent memory leaks
         ApplicationClass.context.getSharedPreferences("my_app_prefs", Context.MODE_PRIVATE)

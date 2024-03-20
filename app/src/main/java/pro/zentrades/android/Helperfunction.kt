@@ -108,27 +108,27 @@ object Helperfunction {
                             if (response.isSuccessful) {
                                 val responseData = response.body()
                                 // Process responseData according to your application's logic
-                                Log.d("MainActivity POST", "Success! Response Data: $responseData")
-                                Log.d("MainActivity POST", "Success! Response Code: ${response}")
+                                Log.d("apiRequestToServer", "Success! Response Data: $responseData")
+                                Log.d("apiRequestToServer", "Success! Response Code: ${response}")
                             } else {
                                 // Handle unsuccessful response (e.g., non-200 status code)
                                 Log.e(
-                                    "MainActivity POST", "Unsuccessful response: ${response.code()}"
+                                    "apiRequestToServer", "Unsuccessful response: ${response.code()}"
                                 )
                             }
 
 
                         } catch (e: Exception) {
-                            Log.e("MainActivity POST", "Error: ${e.message}", e)
+                            Log.e("apiRequestToServer", "Error: ${e.message}", e)
                         }
 
                     }
 
                     override fun onFailure(call: Call<dataModelItem?>, t: Throwable) {
 
-                        Log.d("MainActivity POST", "onFailure")
+                        Log.d("apiRequestToServer", "onFailure")
                         //                if (t is HttpException) {
-                        Log.d("MainActivity POST", "HTTP Status Code: $t")
+                        Log.d("apiRequestToServer", "HTTP Status Code: $t")
                         //                }
                     }
 

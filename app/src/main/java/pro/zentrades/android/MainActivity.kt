@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity() , PermissionCallback{
         const val LOCATION_GPS_ENABLE_CODE = 1001
         const val REQUEST_IGNORE_BATTERY_OPTIMIZATIONS = 2010
         const val FILE_CHOOSER_REQUEST_CODE = 101
+        const val SCRIPT_GET_LOCAL_DATA = "(function() { return localStorage.getItem('user-id'); })();"
     }
 
 
@@ -199,7 +200,7 @@ class MainActivity : AppCompatActivity() , PermissionCallback{
     private fun accessLocalStorage(webView: WebView) {
 
         webView.evaluateJavascript(
-            "(function() { return localStorage.getItem('user-id'); })();"
+            SCRIPT_GET_LOCAL_DATA
         ) { userIdValue ->
             DataHolder.userId = userIdValue.substring(1, userIdValue.length - 1)
             Log.d("LocalStorage values", "user-id : ${DataHolder.userId}")
@@ -422,6 +423,7 @@ class MainActivity : AppCompatActivity() , PermissionCallback{
             ): Boolean {
 
                 val newUrl = request?.url.toString()
+                Log.d("neel" ,"override URL : $newUrl")
 
                 if (isGoogleMapsUrl(newUrl)) {
                     d("Override URL : ", "google map url")
