@@ -26,12 +26,9 @@ object RetrofitInstance {
             .build()
     }
 
-
     val apiInterface: ApiInterface by lazy {
         retrofit.create(ApiInterface::class.java)
     }
-
-
 
     //for get response - IsCacheCleared  ?
     private val retrofit2: Retrofit by lazy {
