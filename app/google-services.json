@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "945407562088",
+    "firebase_url": "https://smartserv-web-project.firebaseio.com",
+    "project_id": "smartserv-web-project",
+    "storage_bucket": "smartserv-web-project.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:945407562088:android:4a4778d615aa3ce9c786dd",
+        "android_client_info": {
+          "package_name": "pro.zentrades.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "945407562088-c532dutt20nl0qsrnao2hsdf53ojcv7u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZD2e0YLsNoZr5Var6KjFfrh-5ck2FBN8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "945407562088-c532dutt20nl0qsrnao2hsdf53ojcv7u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
