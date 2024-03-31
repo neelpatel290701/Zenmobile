@@ -24,8 +24,6 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 
-import kotlin.math.*
-
 
 @Suppress("DEPRECATION")
 class LocationService : Service() {

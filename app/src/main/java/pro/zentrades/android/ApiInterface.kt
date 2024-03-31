@@ -9,14 +9,14 @@ import retrofit2.http.POST
 interface ApiInterface {
 
     @GET("posts")
-    fun getIsCacheCleared() : Call<List<responseDataModelItem>>
+    fun getIsCacheCleared(): Call<List<ResponseDataModelItemForCacheClear>>
 
     @POST("token")
     fun sendToken(
-        @Header("user-id") userId : String  ,
-        @Header("company-id") companyId : String ,
-        @Header("access-token") accessToken : String ,
-        @Body userToken : dataModelItem
-    ) : Call<dataModelItem>
+        @Header("user-id") userId: String,
+        @Header("company-id") companyId: String,
+        @Header("access-token") accessToken: String,
+        @Body userToken: DataModelItemForPushNotification
+    ): Call<DataModelItemForPushNotification>
 
 }

@@ -1,6 +1,7 @@
 package pro.zentrades.android
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -9,7 +10,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 
-class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient(){
+class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient() {
 
     @SuppressLint("QueryPermissionsNeeded")
     override fun shouldOverrideUrlLoading(
@@ -17,12 +18,13 @@ class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient(){
     ): Boolean {
 
         val newUrl = request?.url.toString()
-        Log.d("neel" ,"override URL : $newUrl")
+        Log.d("neel", "override URL : $newUrl")
 
         if (Helperfunction.isGoogleMapsUrl(newUrl)) {
             Log.d("Override URL : ", "google map url")
             val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(newUrl))
-            mapIntent.setPackage("com.google.android.apps.maps") // Specify the package to ensure it opens in Google Maps
+            // Specify the package to ensure it opens in Google Maps
+            mapIntent.setPackage("com.google.android.apps.maps")
             mainActivity.startActivity(mapIntent)
             return true // Return true to prevent WebView from loading the URL
         }
@@ -39,11 +41,12 @@ class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient(){
             return true
         }
 
-        val desiredPattern = "^https://mobile\\.zentrades\\.pro/.*$"   // check URL at the time of logout and then redirect to login page
+        // check URL at the time of logout and then redirect to login page
+        val desiredPattern = "^https://mobile\\.zentrades\\.pro/.*$"
         val urlToCheck = newUrl
 
         if (Helperfunction.isMatchingUrl(urlToCheck, desiredPattern)) {
-            Log.d("override" , "URL Loaded : https://mobile.zentrades.pro/")
+            Log.d("override", "URL Loaded : https://mobile.zentrades.pro/")
             return false  // return false to load the url
         }
 
