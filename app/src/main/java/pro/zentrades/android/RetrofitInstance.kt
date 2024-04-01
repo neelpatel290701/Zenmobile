@@ -9,7 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitInstance {
 
 //    private const val BASE_URL = "https://services-stage.smartserv.io/api/notification/"
-      private const val BASE_URL = "https://services.smartserv.io/api/notification/"
+    private const val BASE_URL = "https://services.zentrades.pro/api/notification/"
 
     private const val BASE_URL2 = "https://jsonplaceholder.typicode.com/"
 

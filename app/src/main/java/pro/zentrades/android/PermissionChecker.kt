@@ -62,7 +62,7 @@ class PermissionChecker(
         if (isGranted) {
             permissionCallback.onNotificationPermissionGranted()
         } else {
-            Log.d("neel", "Notification : Not Granted")
+            Log.d("ZenTrades", "Notification : Not Granted")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 checkLocationPermission()
             }
@@ -75,9 +75,10 @@ class PermissionChecker(
                     activity, Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED
             ) {
-                Log.d("neel", "notification permission ok")
+                Log.d("ZenTrades", "notification permission ok")
+                checkLocationPermission()
             } else if (activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
-                Log.d("neel", "askNotification Permission :  shouldShowRequestPermission rational")
+                Log.d("ZenTrades", "askNotification Permission :  shouldShowRequestPermission rational")
                 val builder = AlertDialog.Builder(activity)
                 builder.setTitle("Enable Notifications")
                     .setMessage("Please enable notifications for this app to receive important updates.")
@@ -91,7 +92,7 @@ class PermissionChecker(
             } else {
                 // Directly ask for the permission
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                Log.d("neel", "askNotification Permission :  launch requsetpermissionlauncher")
+                Log.d("ZenTrades", "askNotification Permission :  launch requsetpermissionlauncher")
             }
         }
     }
@@ -104,11 +105,12 @@ class PermissionChecker(
             ) {
                 permissionCallback.onNotificationPermissionGranted()
                 Log.d(
-                    "neel", "askNotificationPermissionOnNewAccessToken :  Permission Already Okkk"
+                    "ZenTrades", "askNotificationPermissionOnNewAccessToken :  Permission Already Okkk"
                 )
+                checkLocationPermission()
             } else if (activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
                 Log.d(
-                    "neel",
+                    "ZenTrades",
                     "askNotificationPermissionOnNewAccessToken :  shouldShowRequestPermission rational"
                 )
                 val builder = AlertDialog.Builder(activity)
@@ -123,7 +125,7 @@ class PermissionChecker(
             } else {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 Log.d(
-                    "neel",
+                    "ZenTrades",
                     "askNotificationPermissionOnNewAccessToken :  launch requsetpermissionlauncher"
                 )
             }
@@ -141,22 +143,22 @@ class PermissionChecker(
         val client: SettingsClient = LocationServices.getSettingsClient(activity)
         val task: Task<LocationSettingsResponse> = client.checkLocationSettings(builder.build())
 
-        Log.d("neel", "requestDeviceLocationSettings")
+        Log.d("ZenTrades", "requestDeviceLocationSettings")
 
         task.addOnSuccessListener { locationSettingsResponse ->
             // All location settings are satisfied
-            Log.d("neel", "GPS Enable")
+            Log.d("ZenTrades", "GPS Enable")
 
             val state = locationSettingsResponse.locationSettingsStates
             val label =
                 "GPS >> (Present: ${state?.isGpsPresent}  | Usable: ${state?.isGpsUsable} ) \n" + "Network >> ( Present: ${state?.isNetworkLocationPresent} | Usable: ${state?.isNetworkLocationUsable} ) \n" + "Location >> ( Present: ${state?.isLocationPresent} | Usable: ${state?.isLocationUsable} )"
 
-            Toast.makeText(activity, "LOCATION IS ACTIVE", Toast.LENGTH_LONG).show()
+//            Toast.makeText(activity, "LOCATION IS ACTIVE", Toast.LENGTH_LONG).show()
         }
 
         task.addOnFailureListener { exception ->
             if (exception is ResolvableApiException) {
-                Log.d("neel", "GPS Not Enable")
+                Log.d("ZenTrades", "GPS Not Enable")
                 try {
                     // Show the dialog by calling startResolutionForResult(),
                     // and check the result in onActivityResult().
@@ -174,13 +176,13 @@ class PermissionChecker(
     private val backgroundLocation =
         activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             if (it) {
-                Log.d("neel", "backgroundlocation")
+                Log.d("ZenTrades", "backgroundlocation")
                 // after user give permission for location check for GPS is active or not
                 requestDeviceLocationSettings()
                 //Start the Foreground Service
                 DataHolder.locationService = Intent(activity, LocationService::class.java).apply {
-                    putExtra("userId", DataHolder.userId)
-                    putExtra("companyId", DataHolder.companyId)
+                    putExtra("userId", DataHolder.userID)
+                    putExtra("companyId", DataHolder.companyID)
                     putExtra("androidId", DataHolder.androidId)
                 }
                 DataHolder.locationService?.let {
@@ -228,7 +230,7 @@ class PermissionChecker(
             }
 
             else -> {
-                Log.d("neel ", "location-permission  :  Not Granted")
+                Log.d("ZenTrades ", "location-permission  :  Not Granted")
             }
         }
     }
@@ -236,7 +238,7 @@ class PermissionChecker(
     @RequiresApi(Build.VERSION_CODES.Q)
     fun locationPermissionAlreadyGranted() {
 
-        Log.d("neel ", "CheckLocationPermission : AlreadyGranted")
+        Log.d("ZenTrades ", "CheckLocationPermission : AlreadyGranted")
         //after taking permission check the GPS is unable or not
         requestDeviceLocationSettings()
 
@@ -246,11 +248,11 @@ class PermissionChecker(
         ) {
             // if already background permission granted then start the service
             DataHolder.locationService = Intent(activity, LocationService::class.java).apply {
-                putExtra("userId", DataHolder.userId)
-                putExtra("companyId", DataHolder.companyId)
+                putExtra("userId", DataHolder.userID)
+                putExtra("companyId", DataHolder.companyID)
                 putExtra("androidId", DataHolder.androidId)
             }
-            Log.d("neel ", "CheckLocationPermission : Ok  - start service ")
+            Log.d("ZenTrades ", "CheckLocationPermission : Ok  - start service ")
             DataHolder.locationService?.let {
                 ContextCompat.startForegroundService(
                     activity, DataHolder.locationService!!
@@ -284,7 +286,7 @@ class PermissionChecker(
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 )
             ) {
-                Log.d("neel", "CheckLocationPermission  : shouldShowRequestPermissionRationale")
+                Log.d("ZenTrades", "CheckLocationPermission  : shouldShowRequestPermissionRationale")
                 val builder: AlertDialog.Builder = AlertDialog.Builder(activity)
                 builder.setTitle("Location Settings")
                 builder.setMessage("Location services are disabled. Do you want to enable them?")
@@ -302,7 +304,7 @@ class PermissionChecker(
                 }
                 builder.show()
             } else {
-                Log.d("neel", "CheckLocationPermission  : create launcher")
+                Log.d("ZenTrades", "CheckLocationPermission  : create launcher")
                 locationPermissionRequest.launch(
                     arrayOf(
                         Manifest.permission.ACCESS_FINE_LOCATION,

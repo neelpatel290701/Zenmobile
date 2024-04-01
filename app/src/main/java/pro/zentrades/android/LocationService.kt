@@ -58,8 +58,8 @@ class LocationService : Service() {
         val longitude_curr = location?.longitude
         val latitude_curr = location?.latitude
 
-        Log.d("neel LocationService", "latitude : $latitude_curr")
-        Log.d("neel LocationService", "longitude : $longitude_curr")
+        Log.d("ZenTrades LocationService", "latitude : $latitude_curr")
+        Log.d("ZenTrades LocationService", "longitude : $longitude_curr")
 
         if (latitude1 == null && longitude1 == null) {
                 latitude1 = latitude_curr
@@ -71,8 +71,8 @@ class LocationService : Service() {
                 val distance = Helperfunction.distanceBetweenTwoLocationPoint(latitude1!!, longitude1!!, latitude2!!, longitude2!!)
                 val distance_meter = distance * 1000
 
-                Log.d("neel", "userId : $userID and companyId : $companyID")
-                Log.d("neel", "Distance-meter diff  is : $distance_meter \n\n")
+                Log.d("ZenTrades", "userId : $userID and companyId : $companyID")
+                Log.d("ZenTrades", "Distance-meter diff  is : $distance_meter \n\n")
 
                 if (distance_meter > 3) {
                     Total_distance += (distance_meter)
@@ -82,7 +82,7 @@ class LocationService : Service() {
                     )
                     latitude1 = latitude2
                     longitude1 = longitude2
-                    Log.d("neel", "Distance is : $Total_distance")
+                    Log.d("ZenTrades", "Distance is : $Total_distance")
                 }
         }
     }
@@ -93,12 +93,12 @@ class LocationService : Service() {
         ) {
             // Without background location permissions the service cannot run in the foreground
             // Consider informing user or updating your app UI if visible.
-            Log.d("neel", "Location Service : No backgroundLocation Permission")
+            Log.d("ZenTrades", "Location Service : No backgroundLocation Permission")
             stopSelf()
             return
         } else {
                 try {
-                        Log.d("neel", "Location Service : startNotification")
+                        Log.d("ZenTrades", "Location Service : startNotification")
                         ServiceCompat.startForeground(
                             this, NOTIFICATION_ID, getNotification(),
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -119,7 +119,7 @@ class LocationService : Service() {
     @SuppressLint("ForegroundServiceType")
     override fun onCreate() {
         super.onCreate()
-        Log.d("neel", "Location onCreate() ")
+        Log.d("ZenTrades", "Location onCreate() ")
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         locationRequest =
@@ -144,7 +144,7 @@ class LocationService : Service() {
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        Log.d("neel LocationService", "onStartCommand")
+        Log.d("ZenTrades LocationService", "onStartCommand")
         userID = intent?.getStringExtra("userId")
         companyID = intent?.getStringExtra("companyId")
         deviceId = intent?.getStringExtra("androidId")
@@ -161,7 +161,7 @@ class LocationService : Service() {
             )
         } catch (e: Exception) {
             e.printStackTrace()
-            Log.d("neel", "createlocationrequest exception")
+            Log.d("ZenTrades", "createlocationrequest exception")
         }
     }
     @SuppressLint("SuspiciousIndentation")

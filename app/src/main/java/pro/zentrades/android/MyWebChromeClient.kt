@@ -26,7 +26,7 @@ class MyWebChromeClient(private val mainActivity: MainActivity) : WebChromeClien
         filePathCallback: ValueCallback<Array<Uri>>?,
         fileChooserParams: FileChooserParams?
     ): Boolean {
-        Log.d("neel", "onShowFileChooser")
+        Log.d("ZenTrades", "onShowFileChooser")
         fileChooserParams?.let { params ->
 
             val acceptTypes = params.acceptTypes

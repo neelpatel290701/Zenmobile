@@ -85,14 +85,14 @@ object Helperfunction {
             "(function() { return localStorage.getItem('access-token'); })();"
         ) { accessTokenValue ->
             DataHolder.accessToken = accessTokenValue.substring(1, accessTokenValue.length - 1)
-            Log.d("neel", "access-token : ${DataHolder.accessToken}")
+            Log.d("ZenTrades", "access-token : ${DataHolder.accessToken}")
 
             try {
                 val userData =
                     DataModelItemForPushNotification(DataHolder.registrationToken!!, "FCM")
                 RetrofitInstance.apiInterface.sendToken(
-                    DataHolder.userId,
-                    DataHolder.companyId,
+                    DataHolder.userID!!,
+                    DataHolder.companyID!!,
                     DataHolder.accessToken!!,
                     userData
                 )
@@ -130,7 +130,7 @@ object Helperfunction {
                         }
                     })
             } catch (e: Exception) {
-                Log.d("neel", "${e.message}")
+                Log.d("ZenTrades", "${e.message}")
             }
         }
     }
@@ -153,7 +153,7 @@ object Helperfunction {
                 "Firebase Notification",
                 "Registration-token received :  ${DataHolder.registrationToken}"
             )
-            Log.d("Neel", "get token")
+            Log.d("ZenTrades", "get token")
 
             apiRequestToServerForPushNotification(webView)
         })
@@ -273,7 +273,7 @@ object Helperfunction {
             for (s in children!!) {
                 if (s != "lib") {
                     deleteDir(File(appDir, s))
-                    Log.i("neel", "File /data/data/APP_PACKAGE/$s DELETED")
+                    Log.i("ZenTrades", "File /data/data/APP_PACKAGE/$s DELETED")
                 }
             }
         }

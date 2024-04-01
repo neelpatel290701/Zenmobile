@@ -16,8 +16,8 @@ object WebViewConfig {
         webView.settings.domStorageEnabled = true
         webView.settings.databaseEnabled = true
 
-        webView.webViewClient = MyWebViewClient(mainActivity)
-        webView.webChromeClient = MyWebChromeClient(mainActivity)
+        webView.webViewClient = MyWebViewClient(mainActivity)            // Set custom WebViewClient
+        webView.webChromeClient = MyWebChromeClient(mainActivity)        // Set custom WebChromeClient
         webView.setDownloadListener(MyDownloadListener(mainActivity ,webView))
     }
 }

@@ -55,29 +55,19 @@ class MainActivity : AppCompatActivity(), PermissionCallback {
         setContentView(binding.root)
 
         DataHolder.androidId = Helperfunction.getAndroidId(applicationContext)
-        d("neel", "Device Id : ${DataHolder.androidId}")
+        d("ZenTrades", "Device Id : ${DataHolder.androidId}")
 
         window.statusBarColor = resources.getColor(android.R.color.black, theme)
 
         WebViewConfig.configureWebView(binding.webView, this)
 
-//        binding.webView.loadUrl("https://mobile.zentrades.pro/")
-
-//        binding.webView.settings.javaScriptEnabled = true
-//        binding.webView.settings.mixedContentMode = MIXED_CONTENT_COMPATIBILITY_MODE;
-//        binding.webView.settings.domStorageEnabled = true
-//        binding.webView.settings.databaseEnabled = true
-//
-//        binding.webView.webViewClient = MyWebViewClient(this)       // Set custom WebViewClient
-//        binding.webView.webChromeClient = MyWebChromeClient(this)   // Set custom WebChromeClient
-//        binding.webView.setDownloadListener(MyDownloadListener(this))
 
         //Helperfunction.clearApplicationData(cacheDir)     //clean the app data- files , cache , database
         //apiResponseFromServerForCacheClear()              //get Response from server for CacheClear or not
 
-        if (!permissionChecker.isIgnoringBatteryOptimizations()) {
-            permissionChecker.requestBatteryOptimizations()
-        }
+//        if (!permissionChecker.isIgnoringBatteryOptimizations()) {
+//            permissionChecker.requestBatteryOptimizations()
+//        }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -116,7 +106,7 @@ class MainActivity : AppCompatActivity(), PermissionCallback {
                 takePWALocalStorageValue(dataObject)
 
             } catch (e: JSONException) {
-                Log.e("neel", "Error parsing JSON: ${e.message}")
+                Log.e("ZenTrades", "Error parsing JSON: ${e.message}")
             }
         }
     }
@@ -124,22 +114,25 @@ class MainActivity : AppCompatActivity(), PermissionCallback {
 
     private fun takePWALocalStorageValue(dataObject: JSONObject) {
 
-        DataHolder.userId = dataObject.getString("userId")
-        DataHolder.companyId = dataObject.getString("companyId")
+        val currUserId = dataObject.getString("userId")
+        val currCompanyId = dataObject.getString("companyId")
         val currAccessToken = dataObject.getString("accessToken")
 
-        Log.d("neel", "curr-access-token : $currAccessToken")
+        Log.d("ZenTrades", "curr-access-token : $currAccessToken")
         if (currAccessToken != "null") {
+
+            DataHolder.userID = currUserId
+            DataHolder.companyID = currCompanyId
 
             if (DataHolder.accessToken == null || DataHolder.accessToken == currAccessToken) {
                 DataHolder.accessToken = currAccessToken
-                Log.d("neel", "both access token same OR Null")
+                Log.d("ZenTrades", "both access token same OR Null")
                 permissionChecker.askNotificationPermission()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    permissionChecker.checkLocationPermission()
-                }
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                    permissionChecker.checkLocationPermission()
+//                }
             } else if (DataHolder.accessToken != currAccessToken) {
-                Log.d("neel", "both access token Not -same : ${DataHolder.accessToken}")
+                Log.d("ZenTrades", "both access token Not -same : ${DataHolder.accessToken}")
                 DataHolder.accessToken = currAccessToken
                 permissionChecker.askNotificationPermissionOnNewAccessToken()
             }
@@ -149,10 +142,10 @@ class MainActivity : AppCompatActivity(), PermissionCallback {
             val isForegroundServiceRunning =
                 permissionChecker.isForegroundServiceRunning(this, LocationService::class.java)
             if (isForegroundServiceRunning) {
-                Log.d("neel", "Foreground service is running and then stop it")
+                Log.d("ZenTrades", "Foreground service is running and then stop it")
                 stopService(DataHolder.locationService)
             } else {
-                Log.d("neel", "Foreground service is not running")
+                Log.d("ZenTrades", "Foreground service is not running")
             }
 
         }

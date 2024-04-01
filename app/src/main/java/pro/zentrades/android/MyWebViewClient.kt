@@ -18,7 +18,7 @@ class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient() 
     ): Boolean {
 
         val newUrl = request?.url.toString()
-        Log.d("neel", "override URL : $newUrl")
+        Log.d("ZenTrades", "override URL : $newUrl")
 
         if (Helperfunction.isGoogleMapsUrl(newUrl)) {
             Log.d("Override URL : ", "google map url")
@@ -61,14 +61,14 @@ class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient() 
 
     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
-        Log.d("neel", "page-started $url")
+        Log.d("ZenTrades", "page-started $url")
         Log.d("onPageStarted : ", "Value of url(onPage-started) is $url")
     }
 
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
         Log.d("onPageFinished", "ok")
-        Log.d("neel", "page-Finished $url")
+        Log.d("ZenTrades", "page-Finished $url")
 
         // take the values from the local storage after page is loaded
         mainActivity.accessPWALocalStorage(view!!)
