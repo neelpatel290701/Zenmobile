@@ -24,7 +24,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     //or in background state that times called only when data is pass
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-        Log.d("Firebase onMessageReceived", "MyFirebaseMessagingService....")
         remoteMessage.notification?.let {
             val notificationTitle = it.title ?: "Notification Title"
             val notificationBody = it.body ?: "Notification Body"

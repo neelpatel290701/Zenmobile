@@ -65,9 +65,7 @@ class MainActivity : AppCompatActivity(), PermissionCallback {
         //Helperfunction.clearApplicationData(cacheDir)     //clean the app data- files , cache , database
         //apiResponseFromServerForCacheClear()              //get Response from server for CacheClear or not
 
-//        if (!permissionChecker.isIgnoringBatteryOptimizations()) {
-//            permissionChecker.requestBatteryOptimizations()
-//        }
+
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -87,10 +85,10 @@ class MainActivity : AppCompatActivity(), PermissionCallback {
             }
         } else if (requestCode == REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) {
             if (resultCode == Activity.RESULT_OK) {
-                Log.d("onActivityResult", "Granted for ignore battery optimization : $resultCode")
+                Log.d("onActivityResult", "Granted for ignore battery optimization ")
             } else {
                 Log.d(
-                    "onActivityResult", "Not granted for ignore battery optimization : $resultCode"
+                    "onActivityResult", "Not granted for ignore battery optimization"
                 )
             }
         }
@@ -106,7 +104,7 @@ class MainActivity : AppCompatActivity(), PermissionCallback {
                 takePWALocalStorageValue(dataObject)
 
             } catch (e: JSONException) {
-                Log.e("ZenTrades", "Error parsing JSON: ${e.message}")
+                Log.e("ZenTrades", "Error parsing JSON")
             }
         }
     }
@@ -118,7 +116,6 @@ class MainActivity : AppCompatActivity(), PermissionCallback {
         val currCompanyId = dataObject.getString("companyId")
         val currAccessToken = dataObject.getString("accessToken")
 
-        Log.d("ZenTrades", "curr-access-token : $currAccessToken")
         if (currAccessToken != "null") {
 
             DataHolder.userID = currUserId
@@ -126,13 +123,9 @@ class MainActivity : AppCompatActivity(), PermissionCallback {
 
             if (DataHolder.accessToken == null || DataHolder.accessToken == currAccessToken) {
                 DataHolder.accessToken = currAccessToken
-                Log.d("ZenTrades", "both access token same OR Null")
                 permissionChecker.askNotificationPermission()
-//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//                    permissionChecker.checkLocationPermission()
-//                }
+
             } else if (DataHolder.accessToken != currAccessToken) {
-                Log.d("ZenTrades", "both access token Not -same : ${DataHolder.accessToken}")
                 DataHolder.accessToken = currAccessToken
                 permissionChecker.askNotificationPermissionOnNewAccessToken()
             }

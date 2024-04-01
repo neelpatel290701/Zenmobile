@@ -79,13 +79,11 @@ object Helperfunction {
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun apiRequestToServerForPushNotification(webView: WebView) {
-        Log.d("apiRequestToServer", "OKK")
 
         webView.evaluateJavascript(
             "(function() { return localStorage.getItem('access-token'); })();"
         ) { accessTokenValue ->
             DataHolder.accessToken = accessTokenValue.substring(1, accessTokenValue.length - 1)
-            Log.d("ZenTrades", "access-token : ${DataHolder.accessToken}")
 
             try {
                 val userData =
@@ -105,19 +103,10 @@ object Helperfunction {
                             try {
                                 if (response.isSuccessful) {
                                     val responseData = response.body()
-                                    Log.d(
-                                        "apiRequestToServer",
-                                        "Success! Response Data: $responseData"
-                                    )
                                 } else {
-                                    // Handle unsuccessful response (e.g., non-200 status code)
-                                    Log.d(
-                                        "apiRequestToServer",
-                                        "Unsuccessful response: ${response.code()}"
-                                    )
                                 }
                             } catch (e: Exception) {
-                                Log.e("apiRequestToServer", "Error: ${e.message}", e)
+
                             }
                         }
 
@@ -125,12 +114,9 @@ object Helperfunction {
                             call: Call<DataModelItemForPushNotification?>,
                             t: Throwable
                         ) {
-                            Log.d("apiRequestToServer", "onFailure")
-                            Log.d("apiRequestToServer", "HTTP Status Code: $t")
                         }
                     })
             } catch (e: Exception) {
-                Log.d("ZenTrades", "${e.message}")
             }
         }
     }
@@ -139,21 +125,11 @@ object Helperfunction {
     fun getTokenFromFCM(webView: WebView) {
         FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
             if (!task.isSuccessful) {
-                Log.d(
-                    "Firebase Notification",
-                    "Fetching FCM registration token failed",
-                    task.exception
-                )
                 return@OnCompleteListener
             }
             // Get new FCM registration token
             val token = task.result
             DataHolder.registrationToken = token
-            Log.d(
-                "Firebase Notification",
-                "Registration-token received :  ${DataHolder.registrationToken}"
-            )
-            Log.d("ZenTrades", "get token")
 
             apiRequestToServerForPushNotification(webView)
         })
@@ -169,12 +145,12 @@ object Helperfunction {
                 try {
                     if (response.isSuccessful) {
                         val responseData = response.body()
-                        Log.d("apiResponseFromServer", "Success! Response Data: $responseData")
+                        Log.d("apiResponseFromServer", "Success! Response Data")
                     } else {
-                        Log.e("apiResponseFromServer", "Unsuccessful response: ${response.code()}")
+                        Log.e("apiResponseFromServer", "Unsuccessful response")
                     }
                 } catch (e: Exception) {
-                    Log.e("apiResponseFromServer", "Error: ${e.message}", e)
+                    Log.e("apiResponseFromServer", "Error")
                 }
             }
 
@@ -183,7 +159,7 @@ object Helperfunction {
                 t: Throwable
             ) {
                 Log.d("apiResponseFromServer", "onFailure")
-                Log.d("apiResponseFromServer", "HTTP Status Code: $t")
+                Log.d("apiResponseFromServer", "HTTP Status Code")
             }
         })
     }
@@ -273,7 +249,6 @@ object Helperfunction {
             for (s in children!!) {
                 if (s != "lib") {
                     deleteDir(File(appDir, s))
-                    Log.i("ZenTrades", "File /data/data/APP_PACKAGE/$s DELETED")
                 }
             }
         }

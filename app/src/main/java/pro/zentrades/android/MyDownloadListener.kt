@@ -22,7 +22,7 @@ class MyDownloadListener(private val mainActivity: MainActivity , private val we
         contentLength: Long
     ) {
 
-        Log.d("Download File", "Downloaded file URL is $url")
+        Log.d("Download File", "Downloaded file URL")
         val request = DownloadManager.Request(Uri.parse(url))
         request.setMimeType(mimeType)
         request.setDescription("Downloading file")

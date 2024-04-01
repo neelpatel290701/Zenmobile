@@ -18,7 +18,7 @@ class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient() 
     ): Boolean {
 
         val newUrl = request?.url.toString()
-        Log.d("ZenTrades", "override URL : $newUrl")
+        Log.d("ZenTrades", "override URL ")
 
         if (Helperfunction.isGoogleMapsUrl(newUrl)) {
             Log.d("Override URL : ", "google map url")
@@ -36,7 +36,6 @@ class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient() 
         }
 
         if (newUrl.contains(".pdf")) {
-            Log.d("Override", "Override Downloaded file URL is $newUrl")
             view?.loadUrl(newUrl)    //load the url and auto call to setDownloadListener for downloading file
             return true
         }
@@ -46,12 +45,10 @@ class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient() 
         val urlToCheck = newUrl
 
         if (Helperfunction.isMatchingUrl(urlToCheck, desiredPattern)) {
-            Log.d("override", "URL Loaded : https://mobile.zentrades.pro/")
             return false  // return false to load the url
         }
 
         if (newUrl.contains(".png")) {
-            Log.d("override", "Override Image  URL is $newUrl")
             view?.loadUrl(newUrl)
             return true
         }
@@ -62,13 +59,11 @@ class MyWebViewClient(private val mainActivity: MainActivity) : WebViewClient() 
     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
         Log.d("ZenTrades", "page-started $url")
-        Log.d("onPageStarted : ", "Value of url(onPage-started) is $url")
     }
 
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
-        Log.d("onPageFinished", "ok")
-        Log.d("ZenTrades", "page-Finished $url")
+        Log.d("ZenTrades", "page-Finished")
 
         // take the values from the local storage after page is loaded
         mainActivity.accessPWALocalStorage(view!!)

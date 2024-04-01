@@ -62,7 +62,6 @@ class PermissionChecker(
         if (isGranted) {
             permissionCallback.onNotificationPermissionGranted()
         } else {
-            Log.d("ZenTrades", "Notification : Not Granted")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 checkLocationPermission()
             }
@@ -75,7 +74,6 @@ class PermissionChecker(
                     activity, Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED
             ) {
-                Log.d("ZenTrades", "notification permission ok")
                 checkLocationPermission()
             } else if (activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
                 Log.d("ZenTrades", "askNotification Permission :  shouldShowRequestPermission rational")
@@ -92,7 +90,6 @@ class PermissionChecker(
             } else {
                 // Directly ask for the permission
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                Log.d("ZenTrades", "askNotification Permission :  launch requsetpermissionlauncher")
             }
         }
     }
@@ -104,15 +101,8 @@ class PermissionChecker(
                 ) == PackageManager.PERMISSION_GRANTED
             ) {
                 permissionCallback.onNotificationPermissionGranted()
-                Log.d(
-                    "ZenTrades", "askNotificationPermissionOnNewAccessToken :  Permission Already Okkk"
-                )
                 checkLocationPermission()
             } else if (activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
-                Log.d(
-                    "ZenTrades",
-                    "askNotificationPermissionOnNewAccessToken :  shouldShowRequestPermission rational"
-                )
                 val builder = AlertDialog.Builder(activity)
                 builder.setTitle("Enable Notifications")
                     .setMessage("Please enable notifications for this app to receive important updates.")
@@ -124,10 +114,6 @@ class PermissionChecker(
                     }.show()
             } else {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                Log.d(
-                    "ZenTrades",
-                    "askNotificationPermissionOnNewAccessToken :  launch requsetpermissionlauncher"
-                )
             }
         }
     }
@@ -143,22 +129,15 @@ class PermissionChecker(
         val client: SettingsClient = LocationServices.getSettingsClient(activity)
         val task: Task<LocationSettingsResponse> = client.checkLocationSettings(builder.build())
 
-        Log.d("ZenTrades", "requestDeviceLocationSettings")
 
         task.addOnSuccessListener { locationSettingsResponse ->
             // All location settings are satisfied
-            Log.d("ZenTrades", "GPS Enable")
 
             val state = locationSettingsResponse.locationSettingsStates
-            val label =
-                "GPS >> (Present: ${state?.isGpsPresent}  | Usable: ${state?.isGpsUsable} ) \n" + "Network >> ( Present: ${state?.isNetworkLocationPresent} | Usable: ${state?.isNetworkLocationUsable} ) \n" + "Location >> ( Present: ${state?.isLocationPresent} | Usable: ${state?.isLocationUsable} )"
-
-//            Toast.makeText(activity, "LOCATION IS ACTIVE", Toast.LENGTH_LONG).show()
         }
 
         task.addOnFailureListener { exception ->
             if (exception is ResolvableApiException) {
-                Log.d("ZenTrades", "GPS Not Enable")
                 try {
                     // Show the dialog by calling startResolutionForResult(),
                     // and check the result in onActivityResult().
@@ -176,7 +155,6 @@ class PermissionChecker(
     private val backgroundLocation =
         activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             if (it) {
-                Log.d("ZenTrades", "backgroundlocation")
                 // after user give permission for location check for GPS is active or not
                 requestDeviceLocationSettings()
                 //Start the Foreground Service
@@ -213,7 +191,6 @@ class PermissionChecker(
         when {
             permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
                 // Precise location access granted.
-                Log.d("location-permission", "Precise Location : Granted")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     if (ContextCompat.checkSelfPermission(
                             activity, Manifest.permission.ACCESS_BACKGROUND_LOCATION
@@ -225,7 +202,6 @@ class PermissionChecker(
             }
 
             permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
-                Log.d("nee location-permission", "Approximate Location : Granted")
                 askForPreciseLocation()   /// ask for Precise Location to user
             }
 
@@ -238,7 +214,6 @@ class PermissionChecker(
     @RequiresApi(Build.VERSION_CODES.Q)
     fun locationPermissionAlreadyGranted() {
 
-        Log.d("ZenTrades ", "CheckLocationPermission : AlreadyGranted")
         //after taking permission check the GPS is unable or not
         requestDeviceLocationSettings()
 
@@ -336,7 +311,6 @@ class PermissionChecker(
 
     @SuppressLint("BatteryLife")
     fun requestBatteryOptimizations() {
-        Log.d("hello", "ask for requestBatteryOptimization")
         val packageName = activity.applicationContext.packageName
         val intent = Intent()
         intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)

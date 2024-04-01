@@ -10,15 +10,6 @@ import android.webkit.WebView
 
 class MyWebChromeClient(private val mainActivity: MainActivity) : WebChromeClient() {
 
-    override fun onProgressChanged(view: WebView?, newProgress: Int) {
-        super.onProgressChanged(view, newProgress)
-        if (newProgress >= 100) {
-            Log.d("webChromeClient:: onProgressChange in 100 %", "$newProgress")
-        } else {
-            Log.d("webChromeClient:: onProgressChange in", "$newProgress")
-        }
-    }
-
     // For Android 5.0+
     @SuppressLint("IntentReset")
     override fun onShowFileChooser(
@@ -27,19 +18,6 @@ class MyWebChromeClient(private val mainActivity: MainActivity) : WebChromeClien
         fileChooserParams: FileChooserParams?
     ): Boolean {
         Log.d("ZenTrades", "onShowFileChooser")
-        fileChooserParams?.let { params ->
-
-            val acceptTypes = params.acceptTypes
-            Log.d("fileChooserParams", "accept file : $acceptTypes")
-
-            if (acceptTypes != null) {
-                val acceptTypesString = acceptTypes.joinToString(", ")
-                Log.d("fileChooserParams", "Accepted MIME types: $acceptTypesString")
-            } else {
-                Log.d("fileChooserParams", "No accepted MIME types specified")
-            }
-
-        }
 
         mainActivity.permissionChecker.checkCameraPermission()
         DataHolder.uploadCallback = filePathCallback
